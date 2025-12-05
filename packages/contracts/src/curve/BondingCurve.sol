@@ -129,6 +129,24 @@ contract BondingCurve is IBondingCurve, ReentrancyGuard, Ownable {
         return !state.graduated && state.ethReserve >= _curveParams.graduationThreshold;
     }
 
+    /// @inheritdoc IBondingCurve
+    function getTokenInfo(address token) external view override returns (
+        uint256 supply,
+        uint256 totalRaised,
+        uint256 graduationTarget,
+        bool graduated,
+        address creator
+    ) {
+        TokenState memory state = _tokenStates[token];
+        return (
+            state.tokenSupply,
+            state.ethReserve,
+            _curveParams.graduationThreshold,
+            state.graduated,
+            IXfernoToken(token).creator()
+        );
+    }
+
     // ============================================
     // WRITE FUNCTIONS
     // ============================================
@@ -204,6 +222,29 @@ contract BondingCurve is IBondingCurve, ReentrancyGuard, Ownable {
     function graduate(address token) external override returns (address) {
         if (!canGraduate(token)) revert NotGraduatable();
         return _graduate(token);
+    }
+
+    /// @inheritdoc IBondingCurve
+    function graduateToken(address token) external override {
+        TokenState storage state = _tokenStates[token];
+        if (state.graduated) revert AlreadyGraduated();
+        if (state.ethReserve < _curveParams.graduationThreshold) revert NotGraduatable();
+
+        state.graduated = true;
+        state.graduatedAt = block.timestamp;
+
+        // Transfer ETH and tokens to caller (GraduationEngine)
+        uint256 ethAmount = state.ethReserve;
+        uint256 tokenAmount = _curveParams.virtualTokenReserve - state.tokenSupply;
+
+        // Mint remaining tokens to caller for LP
+        IXfernoToken(token).mint(msg.sender, tokenAmount);
+
+        // Transfer ETH to caller
+        (bool success, ) = msg.sender.call{value: ethAmount}("");
+        if (!success) revert TransferFailed();
+
+        emit TokenGraduated(token, msg.sender, ethAmount, tokenAmount);
     }
 
     // ============================================

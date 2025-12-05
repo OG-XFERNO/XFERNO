@@ -225,7 +225,7 @@ contract GraduationEngine is Ownable, ReentrancyGuard, Pausable {
         }
 
         if (creatorFee > 0) {
-            address creator = IXfernoToken(token).owner();
+            address creator = IXfernoToken(token).creator();
             (bool success, ) = creator.call{value: creatorFee}("");
             require(success, "GraduationEngine: creator fee transfer failed");
         }
@@ -304,7 +304,7 @@ contract GraduationEngine is Ownable, ReentrancyGuard, Pausable {
         }
 
         if (creatorFee > 0) {
-            address creator = IXfernoToken(token).owner();
+            address creator = IXfernoToken(token).creator();
             (bool creatorSuccess, ) = creator.call{value: creatorFee}("");
             require(creatorSuccess, "GraduationEngine: creator fee failed");
         }

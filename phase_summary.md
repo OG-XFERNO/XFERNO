@@ -308,9 +308,11 @@ interface INetworkAdapter {
 | Token factory | ✅ TokenFactory.sol |
 | Mint/burn for bridges | ✅ XfernoTokenZK.sol |
 
-**Deployed (Sepolia):**
+**Deployed (Sepolia - chainId 11155111):**
 - TokenFactory: `0x9c78920aAF6f7686438613b05d5921155f989884`
-- BondingCurve: `0xf0354A6E8491D05886a6216dB713b4133f391e3c`
+- BondingCurve: `0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751`
+- MockVerifier: `0x85ca2cA1109534763f6926243a6f4A51132E03e6`
+- ZKRollup: `0xAd536C718b63883943ab86348726E10637Fb9869`
 
 ## Step 1.3: Presale Contract ✅ COMPLETE (BondingCurve)
 
