@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import { formatEther } from 'viem';
 import {
@@ -9,6 +9,7 @@ import {
   isChainSupported,
   getExplorerTxUrl,
 } from '@/lib/contracts';
+import { txToast, dismissToast, toastSuccess, toastError } from '@/lib/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,12 +88,51 @@ export default function LaunchPage() {
   // Check if chain is supported
   const chainSupported = isChainSupported(chainId);
 
-  // Handle successful launch
+  // Toast tracking
+  const toastIdRef = useRef<string | number | null>(null);
+  const explorerUrl = getExplorerTxUrl(chainId, hash || '');
+
+  // Handle transaction states with toasts
+  useEffect(() => {
+    if (isPending && !toastIdRef.current) {
+      toastIdRef.current = txToast.pending('Creating your token...');
+    }
+  }, [isPending]);
+
+  useEffect(() => {
+    if (isConfirming && hash && toastIdRef.current) {
+      dismissToast(toastIdRef.current);
+      toastIdRef.current = txToast.submitted(hash, explorerUrl?.split('/tx/')[0]);
+    }
+  }, [isConfirming, hash, explorerUrl]);
+
   useEffect(() => {
     if (isSuccess && hash) {
+      if (toastIdRef.current) {
+        dismissToast(toastIdRef.current);
+        toastIdRef.current = null;
+      }
+      txToast.success('Token created successfully!', hash, explorerUrl?.split('/tx/')[0]);
       setLaunchSuccess(true);
     }
-  }, [isSuccess, hash]);
+  }, [isSuccess, hash, explorerUrl]);
+
+  useEffect(() => {
+    if (txError) {
+      if (toastIdRef.current) {
+        dismissToast(toastIdRef.current);
+        toastIdRef.current = null;
+      }
+      const errorMsg = txError.message?.includes('User rejected')
+        ? undefined
+        : txError.message?.slice(0, 100);
+      if (txError.message?.includes('User rejected')) {
+        txToast.rejected();
+      } else {
+        txToast.error('Token creation failed', errorMsg);
+      }
+    }
+  }, [txError]);
 
   const updateField = (field: keyof TokenFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

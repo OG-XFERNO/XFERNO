@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAccount, useBalance, useChainId, useGasPrice } from 'wagmi';
 import { formatEther, parseEther, type Address } from 'viem';
+import { txToast, dismissToast } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -152,9 +153,33 @@ export default function TradePage() {
     sellAmountWei > BigInt(0) &&
     allowance < sellAmountWei;
 
-  // Handle successful transactions
+  // Toast tracking
+  const buyToastRef = useRef<string | number | null>(null);
+  const sellToastRef = useRef<string | number | null>(null);
+  const approveToastRef = useRef<string | number | null>(null);
+  const explorerBase = getExplorerTxUrl(chainId, '')?.replace('/tx/', '') || '';
+
+  // Buy transaction toasts
+  useEffect(() => {
+    if (isBuying && !buyToastRef.current) {
+      buyToastRef.current = txToast.pending('Processing buy order...');
+    }
+  }, [isBuying]);
+
+  useEffect(() => {
+    if (isBuyConfirming && buyHash && buyToastRef.current) {
+      dismissToast(buyToastRef.current);
+      buyToastRef.current = txToast.submitted(buyHash, explorerBase);
+    }
+  }, [isBuyConfirming, buyHash, explorerBase]);
+
   useEffect(() => {
     if (buySuccess && buyHash) {
+      if (buyToastRef.current) {
+        dismissToast(buyToastRef.current);
+        buyToastRef.current = null;
+      }
+      txToast.success(`Bought ${token.symbol}!`, buyHash, explorerBase);
       setTxSuccess(true);
       setLastTxHash(buyHash);
       setAmount('');
@@ -162,10 +187,29 @@ export default function TradePage() {
       refetchState();
       refetchPrice();
     }
-  }, [buySuccess, buyHash]);
+  }, [buySuccess, buyHash, token.symbol, explorerBase]);
+
+  // Sell transaction toasts
+  useEffect(() => {
+    if (isSelling && !sellToastRef.current) {
+      sellToastRef.current = txToast.pending('Processing sell order...');
+    }
+  }, [isSelling]);
+
+  useEffect(() => {
+    if (isSellConfirming && sellHash && sellToastRef.current) {
+      dismissToast(sellToastRef.current);
+      sellToastRef.current = txToast.submitted(sellHash, explorerBase);
+    }
+  }, [isSellConfirming, sellHash, explorerBase]);
 
   useEffect(() => {
     if (sellSuccess && sellHash) {
+      if (sellToastRef.current) {
+        dismissToast(sellToastRef.current);
+        sellToastRef.current = null;
+      }
+      txToast.success(`Sold ${token.symbol}!`, sellHash, explorerBase);
       setTxSuccess(true);
       setLastTxHash(sellHash);
       setAmount('');
@@ -173,13 +217,52 @@ export default function TradePage() {
       refetchState();
       refetchPrice();
     }
-  }, [sellSuccess, sellHash]);
+  }, [sellSuccess, sellHash, token.symbol, explorerBase]);
+
+  // Approve transaction toasts
+  useEffect(() => {
+    if (isApproving && !approveToastRef.current) {
+      approveToastRef.current = txToast.pending('Approving token...');
+    }
+  }, [isApproving]);
+
+  useEffect(() => {
+    if (isApproveConfirming && approveToastRef.current) {
+      dismissToast(approveToastRef.current);
+      approveToastRef.current = txToast.pending('Confirming approval...');
+    }
+  }, [isApproveConfirming]);
 
   useEffect(() => {
     if (approveSuccess) {
+      if (approveToastRef.current) {
+        dismissToast(approveToastRef.current);
+        approveToastRef.current = null;
+      }
+      txToast.success('Token approved!');
       refetchAllowance();
     }
   }, [approveSuccess]);
+
+  // Error handling
+  useEffect(() => {
+    const error = buyError || sellError || approveError;
+    if (error) {
+      // Clear any pending toasts
+      [buyToastRef, sellToastRef, approveToastRef].forEach(ref => {
+        if (ref.current) {
+          dismissToast(ref.current);
+          ref.current = null;
+        }
+      });
+      
+      if (error.message?.includes('User rejected')) {
+        txToast.rejected();
+      } else {
+        txToast.error('Transaction failed', error.message?.slice(0, 100));
+      }
+    }
+  }, [buyError, sellError, approveError]);
 
   // Real-time calculations
   const calculations = useMemo(() => {
