@@ -88,6 +88,21 @@ interface IBondingCurve {
     /// @notice Check if token can graduate
     function canGraduate(address token) external view returns (bool);
 
+    /// @notice Get token info for graduation
+    /// @param token Token address
+    /// @return supply Current token supply
+    /// @return totalRaised Total ETH raised
+    /// @return graduationTarget Target ETH for graduation
+    /// @return graduated Whether token has graduated
+    /// @return creator Token creator address
+    function getTokenInfo(address token) external view returns (
+        uint256 supply,
+        uint256 totalRaised,
+        uint256 graduationTarget,
+        bool graduated,
+        address creator
+    );
+
     // ============================================
     // WRITE FUNCTIONS
     // ============================================
@@ -113,4 +128,9 @@ interface IBondingCurve {
     /// @param token Token address
     /// @return dexPool Address of created DEX pool
     function graduate(address token) external returns (address dexPool);
+
+    /// @notice Graduate token (called by GraduationEngine)
+    /// @param token Token address
+    /// @dev Withdraws ETH and tokens to caller for DEX deployment
+    function graduateToken(address token) external;
 }

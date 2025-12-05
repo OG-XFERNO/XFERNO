@@ -18,6 +18,7 @@ import { TradingModule } from './modules/trading/trading.module';
 import { GraduationModule } from './modules/graduation/graduation.module';
 import { BridgeModule } from './modules/bridge/bridge.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { ZKModule } from './modules/zk/zk.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { AdminModule } from './modules/admin/admin.module';
     GraduationModule,
     BridgeModule,
     AdminModule,
+    ZKModule,
   ],
 })
 export class AppModule {}
