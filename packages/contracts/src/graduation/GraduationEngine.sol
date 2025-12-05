@@ -9,28 +9,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IXfernoToken.sol";
 import "../interfaces/IBondingCurve.sol";
 
-/**
- * @title IGraduationEngine
- * @notice Interface for DEX pool creation
- */
-interface IUniswapV2Factory {
-    function createPair(address tokenA, address tokenB) external returns (address pair);
-    function getPair(address tokenA, address tokenB) external view returns (address pair);
-}
+import "../dex/interfaces/IXfernoFactory.sol";
+import "../dex/interfaces/IXfernoRouter.sol";
 
-interface IUniswapV2Router {
-    function factory() external pure returns (address);
-    function WETH() external pure returns (address);
-    
-    function addLiquidityETH(
-        address token,
-        uint amountTokenDesired,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-}
+/**
+ * @title XFERNO DEX Interfaces
+ * @notice Uses in-house XFERNO DEX for graduation liquidity
+ */
 
 /**
  * @title GraduationEngine
@@ -105,8 +90,8 @@ contract GraduationEngine is Ownable, ReentrancyGuard, Pausable {
 
     // ============ State Variables ============
 
-    /// @notice Uniswap V2 Router
-    IUniswapV2Router public router;
+    /// @notice XFERNO DEX Router
+    IXfernoRouter public router;
 
     /// @notice Bonding curve contract
     IBondingCurve public bondingCurve;
@@ -133,7 +118,7 @@ contract GraduationEngine is Ownable, ReentrancyGuard, Pausable {
         address _bondingCurve,
         address _feeRecipient
     ) Ownable(msg.sender) {
-        router = IUniswapV2Router(_router);
+        router = IXfernoRouter(_router);
         bondingCurve = IBondingCurve(_bondingCurve);
         feeRecipient = _feeRecipient;
 
@@ -347,7 +332,7 @@ contract GraduationEngine is Ownable, ReentrancyGuard, Pausable {
         );
 
         // Get pair address
-        pair = IUniswapV2Factory(router.factory()).getPair(token, router.WETH());
+        pair = IXfernoFactory(router.factory()).getPair(token, router.WETH());
         require(pair != address(0), "GraduationEngine: pair not created");
 
         emit PoolCreated(token, pair, amountToken, amountETH);
@@ -400,7 +385,7 @@ contract GraduationEngine is Ownable, ReentrancyGuard, Pausable {
      * @notice Update router address
      */
     function setRouter(address _router) external onlyOwner {
-        router = IUniswapV2Router(_router);
+        router = IXfernoRouter(_router);
     }
 
     /**
