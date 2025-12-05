@@ -11,20 +11,20 @@
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                           XFERNO BUILD PROGRESS                                ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ████████████████████████░░░░░░░░░░░░░░░░  55%             ║
+║  Overall Progress:  ████████████████████░░░░░░░░░░░░░░░░░░░░  50%             ║
 ║                                                                                ║
 ║  Phase 0: Foundation        ████████████████████  100% ✅ COMPLETE            ║
-║  Phase 1: ETH + ZKR MVP     ████████████████████  100% ✅ COMPLETE            ║
-║  Phase 2: Auth, KYC & Social░░░░░░░░░░░░░░░░░░░░  0%   [NEXT]                 ║
+║  Phase 1: ETH + ZKR MVP     ████████████████░░░░  90%  [IN PROGRESS]          ║
+║  Phase 2: Auth, KYC & Social░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 3: BDAG + Adapters   ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 4: Full Multi-Chain  ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 5: Production        ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 
 Last Updated: 2024-12-05
-Current Phase: Phase 2 - Auth, KYC & Social
-Current Focus: DIDit integration, KYC flow, social features
-Blockers: None - Phase 1 complete
+Current Phase: Phase 1 - XFERNO DEX Build
+Current Focus: In-house AMM for graduation liquidity
+Blockers: DEX contracts required before graduation can work
 ```
 
 ---
@@ -33,7 +33,7 @@ Blockers: None - Phase 1 complete
 
 | Item | Value |
 |------|-------|
-| **Current Phase** | Phase 2 - Auth & KYC |
+| **Current Phase** | Phase 1 - XFERNO DEX |
 | **Frontend** | ✅ Complete MVP + Launch Mode/Network selectors |
 | **Smart Contracts** | ✅ Deployed + ZK contracts + Graduation Engine |
 | **Backend API** | ✅ Full services + ZK prover service |
@@ -41,8 +41,9 @@ Blockers: None - Phase 1 complete
 | **Docker** | ✅ docker-compose ready |
 | **CI/CD** | ✅ GitHub Actions configured |
 | **ZK Rollup** | ✅ Circuits + Contracts + Prover |
-| **Next Action** | DIDit OAuth integration |
-| **Last Completed** | Phase 1 - ETH + ZKR MVP |
+| **XFERNO DEX** | ⬜ **REQUIRED** - In-house AMM for graduation |
+| **Next Action** | Build XfernoPair, XfernoFactory, XfernoRouter |
+| **Last Completed** | ZK Rollup deployment to Sepolia |
 
 ---
 
@@ -281,10 +282,11 @@ interface INetworkAdapter {
 
 ---
 
-# PHASE 1: ETH + ZKR MVP ✅ COMPLETE
+# PHASE 1: ETH + ZKR MVP 🟡 IN PROGRESS
 
-**Duration:** Completed | **Status:** ✅ COMPLETE | **Progress:** 100%  
-**Dependencies:** Phase 0 complete ✅
+**Duration:** 4-6 weeks | **Status:** 🟡 90% | **Progress:** 90%  
+**Dependencies:** Phase 0 complete ✅  
+**Blocker:** XFERNO DEX required for graduation
 
 ## Step 1.1: ZK Rollup Core ✅ COMPLETE
 
@@ -309,10 +311,15 @@ interface INetworkAdapter {
 | Mint/burn for bridges | ✅ XfernoTokenZK.sol |
 
 **Deployed (Sepolia - chainId 11155111):**
-- TokenFactory: `0x9c78920aAF6f7686438613b05d5921155f989884`
-- BondingCurve: `0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751`
-- MockVerifier: `0x85ca2cA1109534763f6926243a6f4A51132E03e6`
-- ZKRollup: `0xAd536C718b63883943ab86348726E10637Fb9869`
+
+| Contract | Address | Etherscan |
+|----------|---------|-----------|
+| TokenFactory | `0x9c78920aAF6f7686438613b05d5921155f989884` | [View](https://sepolia.etherscan.io/address/0x9c78920aAF6f7686438613b05d5921155f989884) |
+| BondingCurve | `0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751` | [View](https://sepolia.etherscan.io/address/0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751) |
+| MockVerifier | `0x85ca2cA1109534763f6926243a6f4A51132E03e6` | [View](https://sepolia.etherscan.io/address/0x85ca2cA1109534763f6926243a6f4A51132E03e6) |
+| ZKRollup | `0xAd536C718b63883943ab86348726E10637Fb9869` | [View](https://sepolia.etherscan.io/address/0xAd536C718b63883943ab86348726E10637Fb9869) |
+| XfernoFactory | ⬜ Pending DEX build | - |
+| XfernoRouter | ⬜ Pending DEX build | - |
 
 ## Step 1.3: Presale Contract ✅ COMPLETE (BondingCurve)
 
@@ -366,6 +373,45 @@ interface INetworkAdapter {
 | Token cards | ✅ |
 | Token detail page | ✅ |
 
+## Step 1.8: XFERNO DEX (In-House AMM) ⬜ REQUIRED
+
+**Goal:** Build custom Uniswap V2-style DEX for graduated token liquidity
+
+| Task | Status |
+|------|--------|
+| XfernoPair.sol (LP token + swap) | ⬜ |
+| XfernoFactory.sol (pair creation) | ⬜ |
+| XfernoRouter.sol (swap routing) | ⬜ |
+| WETH wrapper integration | ⬜ |
+| Liquidity add/remove | ⬜ |
+| Swap functions (ETH↔Token) | ⬜ |
+| Fee mechanism (0.3% LP fee) | ⬜ |
+| Price oracle (TWAP) | ⬜ |
+| Flash loan protection | ⬜ |
+| DEX frontend UI | ⬜ |
+
+**Why In-House DEX:**
+- Full control over graduation liquidity
+- Custom fee structures
+- No external dependencies
+- Multi-chain deployment ready
+- Integrated with GraduationEngine
+
+**Contracts Structure:**
+```
+packages/contracts/src/dex/
+├── XfernoPair.sol        # LP token + constant product AMM
+├── XfernoFactory.sol     # Creates new pairs
+├── XfernoRouter.sol      # User-facing swap interface
+├── interfaces/
+│   ├── IXfernoPair.sol
+│   ├── IXfernoFactory.sol
+│   └── IXfernoRouter.sol
+└── libraries/
+    ├── XfernoLibrary.sol # Price calculations
+    └── Math.sol          # Safe math utilities
+```
+
 ## Phase 1 Checklist
 
 - [x] 1.1 ZK Rollup ✅
@@ -375,6 +421,7 @@ interface INetworkAdapter {
 - [x] 1.5 Launch Wizard ✅
 - [x] 1.6 Trading UI ✅
 - [x] 1.7 Discovery ✅
+- [ ] 1.8 XFERNO DEX ⬜ **REQUIRED FOR GRADUATION**
 
 ---
 
