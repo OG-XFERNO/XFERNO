@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Flame, Globe, Zap, Shield, Rocket, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConnectButton } from '@/components/wallet/connect-button';
 
 export default function HomePage() {
   return (
@@ -31,12 +34,12 @@ export default function HomePage() {
             </Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Connect Wallet
-            </Button>
-            <Button size="sm" className="bg-gradient-fire hover:opacity-90">
-              Launch Token
-            </Button>
+            <ConnectButton />
+            <Link href="/launch">
+              <Button size="sm" className="bg-gradient-fire hover:opacity-90">
+                Launch Token
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -65,13 +68,17 @@ export default function HomePage() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" className="bg-gradient-fire hover:opacity-90 text-lg px-8">
-                Launch Your Token
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button size="lg" variant="outline" className="text-lg px-8">
-                Explore Tokens
-              </Button>
+              <Link href="/launch">
+                <Button size="lg" className="bg-gradient-fire hover:opacity-90 text-lg px-8">
+                  Launch Your Token
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/tokens">
+                <Button size="lg" variant="outline" className="text-lg px-8">
+                  Explore Tokens
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -203,7 +210,11 @@ export default function HomePage() {
         <div className="container">
           <div className="relative rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-fire opacity-90" />
-            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
+            {/* Grid pattern background */}
+            <div className="absolute inset-0 opacity-20" style={{
+              backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+              backgroundSize: '40px 40px'
+            }} />
             
             <div className="relative px-8 py-16 md:px-16 md:py-24 text-center text-white">
               <h2 className="text-3xl md:text-5xl font-bold mb-6">
@@ -213,10 +224,12 @@ export default function HomePage() {
                 Join hundreds of projects that have successfully launched and graduated 
                 to multi-chain presence with XFERNO.
               </p>
-              <Button size="lg" variant="secondary" className="text-lg px-8">
-                Get Started Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              <Link href="/launch">
+                <Button size="lg" variant="secondary" className="text-lg px-8">
+                  Get Started Now
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -236,15 +249,18 @@ export default function HomePage() {
               />
             </Link>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/docs" className="hover:text-foreground transition-colors">
-                Documentation
+              <Link href="/tokens" className="hover:text-foreground transition-colors">
+                Explore
               </Link>
-              <Link href="/terms" className="hover:text-foreground transition-colors">
+              <Link href="/launch" className="hover:text-foreground transition-colors">
+                Launch
+              </Link>
+              <a href="#" className="hover:text-foreground transition-colors">
                 Terms
-              </Link>
-              <Link href="/privacy" className="hover:text-foreground transition-colors">
+              </a>
+              <a href="#" className="hover:text-foreground transition-colors">
                 Privacy
-              </Link>
+              </a>
             </div>
             <div className="text-sm text-muted-foreground">
               © 2024 XFERNO. All rights reserved.

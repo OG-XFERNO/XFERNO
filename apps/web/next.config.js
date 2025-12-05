@@ -46,7 +46,13 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@xferno/types', '@xferno/ui'],
   webpack: (config) => {
-    config.resolve.fallback = { fs: false, net: false, tls: false };
+    config.resolve.fallback = { 
+      fs: false, 
+      net: false, 
+      tls: false,
+      // Fix for MetaMask SDK trying to import React Native modules
+      '@react-native-async-storage/async-storage': false,
+    };
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
     return config;
   },
