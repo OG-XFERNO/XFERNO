@@ -5,7 +5,7 @@
   "description": "XFERNO Smart Contracts",
   "scripts": {
     "build": "forge build",
-    "test": "forge test",
+    "test": "forge test -vvv",
     "test:gas": "forge test --gas-report",
     "test:coverage": "forge coverage",
     "test:fuzz": "forge test --fuzz-runs 10000",
@@ -13,10 +13,14 @@
     "lint:fix": "forge fmt",
     "clean": "forge clean",
     "snapshot": "forge snapshot",
+    "abi:export": "forge build && node scripts/export-abi.js",
     "deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
-    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify",
-    "deploy:base-sepolia": "forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify",
-    "verify": "forge verify-contract"
+    "deploy:sepolia": "forge script script/Deploy.s.sol:DeploySepolia --rpc-url sepolia --broadcast --verify -vvvv",
+    "deploy:sepolia:dry": "forge script script/Deploy.s.sol:DeploySepolia --rpc-url sepolia -vvvv",
+    "deploy:base-sepolia": "forge script script/Deploy.s.sol:DeployBaseSepolia --rpc-url base_sepolia --broadcast --verify -vvvv",
+    "deploy:base-sepolia:dry": "forge script script/Deploy.s.sol:DeployBaseSepolia --rpc-url base_sepolia -vvvv",
+    "verify:sepolia": "forge verify-contract --chain sepolia",
+    "verify:base-sepolia": "forge verify-contract --chain base-sepolia"
   },
   "devDependencies": {}
 }
