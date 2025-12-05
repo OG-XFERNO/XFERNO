@@ -20,6 +20,9 @@ fuzz = { runs = 256 }
 invariant = { runs = 256, depth = 15 }
 gas_reports = ["*"]
 
+# File system permissions for deployment output
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
 # Formatting
 line_length = 100
 tab_width = 4

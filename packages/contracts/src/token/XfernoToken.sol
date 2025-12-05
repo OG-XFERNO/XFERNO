@@ -95,6 +95,16 @@ contract XfernoToken is ERC20, ERC20Burnable, IXfernoToken {
         _mint(to, amount);
     }
 
+    /// @inheritdoc ERC20Burnable
+    function burn(uint256 value) public virtual override(ERC20Burnable, IXfernoToken) {
+        super.burn(value);
+    }
+
+    /// @inheritdoc ERC20Burnable
+    function burnFrom(address account, uint256 value) public virtual override(ERC20Burnable, IXfernoToken) {
+        super.burnFrom(account, value);
+    }
+
     // ============================================
     // OVERRIDES
     // ============================================

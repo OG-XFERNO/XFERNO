@@ -10,6 +10,7 @@ export {
   getChainConfig,
   getContractAddresses,
   isChainSupported,
+  areContractsDeployed,
   getExplorerTxUrl,
   getExplorerAddressUrl,
   getExplorerTokenUrl,

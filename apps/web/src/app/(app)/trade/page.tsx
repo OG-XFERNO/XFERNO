@@ -1,20 +1,35 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAccount, useBalance, useChainId, useGasPrice } from 'wagmi';
-import { formatEther, parseEther } from 'viem';
+import { formatEther, parseEther, type Address } from 'viem';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { ConnectButton } from '@/components/wallet/connect-button';
 import { TradingChart } from '@/components/trading/chart';
 import { OrderBook } from '@/components/trading/order-book';
 import { RecentTrades } from '@/components/trading/recent-trades';
-import { PLATFORM_FEE_BPS, chainMetadata, GAS_MULTIPLIERS } from '@/lib/wagmi';
+import { TokenSelector } from '@/components/trading/token-selector';
+import { GAS_MULTIPLIERS } from '@/lib/wagmi';
+import {
+  useTokenInfo,
+  useTokenBalance,
+  useTokenState,
+  useCurrentPrice,
+  useBuyTokens,
+  useSellTokens,
+  useApproveToken,
+  useTokenAllowance,
+  useCurveParams,
+  getContractAddresses,
+  isChainSupported,
+  getExplorerTxUrl,
+} from '@/lib/contracts';
 import {
   ArrowDownUp,
   TrendingUp,
@@ -25,53 +40,164 @@ import {
   Zap,
   AlertTriangle,
   RefreshCw,
+  Loader2,
+  CheckCircle2,
+  ExternalLink,
+  Coins,
 } from 'lucide-react';
 
-// Mock token data - replace with real data
-const mockToken = {
-  address: '0x1234567890abcdef1234567890abcdef12345678',
-  name: 'Example Token',
-  symbol: 'EXMPL',
-  price: 0.00042,
-  priceChange24h: 12.5,
-  volume24h: 125000,
-  marketCap: 420000,
-  liquidity: 85000,
+// Default token when none is selected
+const DEFAULT_TOKEN = {
+  address: null as Address | null,
+  name: 'Select a Token',
+  symbol: 'TOKEN',
+  price: 0,
+  priceChange24h: 0,
+  volume24h: 0,
+  marketCap: 0,
+  liquidity: 0,
 };
 
 export default function TradePage() {
+  const searchParams = useSearchParams();
+  const tokenParam = searchParams.get('token');
+  const tokenAddress = tokenParam && tokenParam.startsWith('0x') ? tokenParam as Address : undefined;
+
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: ethBalance } = useBalance({ address });
   const { data: gasPrice } = useGasPrice();
 
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(0.5);
-  const [isLoading, setIsLoading] = useState(false);
+  const [txSuccess, setTxSuccess] = useState(false);
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  // Mock token balance
-  const tokenBalance = 50000;
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Contract addresses
+  const contractAddresses = getContractAddresses(chainId);
+  const chainSupported = isChainSupported(chainId);
+
+  // Token data from contracts
+  const tokenInfo = useTokenInfo(tokenAddress);
+  const { data: tokenBalanceData, refetch: refetchBalance } = useTokenBalance(tokenAddress, address);
+  const { data: tokenState, refetch: refetchState } = useTokenState(tokenAddress);
+  const { data: currentPrice, refetch: refetchPrice } = useCurrentPrice(tokenAddress);
+  const { data: curveParams } = useCurveParams();
+  const { data: allowance, refetch: refetchAllowance } = useTokenAllowance(
+    tokenAddress,
+    address,
+    contractAddresses?.bondingCurve
+  );
+
+  // Trading hooks
+  const { 
+    buy, 
+    isPending: isBuying, 
+    isConfirming: isBuyConfirming, 
+    isSuccess: buySuccess,
+    hash: buyHash,
+    error: buyError 
+  } = useBuyTokens();
+  
+  const { 
+    sell, 
+    isPending: isSelling, 
+    isConfirming: isSellConfirming, 
+    isSuccess: sellSuccess,
+    hash: sellHash,
+    error: sellError 
+  } = useSellTokens();
+  
+  const { 
+    approve, 
+    isPending: isApproving, 
+    isConfirming: isApproveConfirming,
+    isSuccess: approveSuccess,
+    error: approveError 
+  } = useApproveToken();
+
+  // Derived state
+  const isLoading = isBuying || isBuyConfirming || isSelling || isSellConfirming || isApproving || isApproveConfirming;
+  const tokenBalance = tokenBalanceData ? parseFloat(formatEther(tokenBalanceData)) : 0;
+  const priceInEth = currentPrice ? parseFloat(formatEther(currentPrice)) : 0;
+  const feeBps = curveParams ? Number(curveParams.feeBps) : 100;
+  const platformFeePercent = feeBps / 10000;
+
+  // Build token display data
+  const token = tokenAddress && tokenInfo.name ? {
+    address: tokenAddress,
+    name: tokenInfo.name,
+    symbol: tokenInfo.symbol || 'TOKEN',
+    price: priceInEth,
+    priceChange24h: 0, // Would need price history
+    volume24h: 0, // Would need indexer
+    marketCap: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) * 2 : 0,
+    liquidity: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) : 0,
+    graduated: tokenInfo.graduated || false,
+  } : DEFAULT_TOKEN;
+
+  // Check if approval is needed for selling
+  const sellAmountWei = amount && parseFloat(amount) > 0 ? parseEther(amount) : BigInt(0);
+  const needsApproval = activeTab === 'sell' && 
+    tokenAddress && 
+    contractAddresses?.bondingCurve &&
+    allowance !== undefined && 
+    sellAmountWei > BigInt(0) &&
+    allowance < sellAmountWei;
+
+  // Handle successful transactions
+  useEffect(() => {
+    if (buySuccess && buyHash) {
+      setTxSuccess(true);
+      setLastTxHash(buyHash);
+      setAmount('');
+      refetchBalance();
+      refetchState();
+      refetchPrice();
+    }
+  }, [buySuccess, buyHash]);
+
+  useEffect(() => {
+    if (sellSuccess && sellHash) {
+      setTxSuccess(true);
+      setLastTxHash(sellHash);
+      setAmount('');
+      refetchBalance();
+      refetchState();
+      refetchPrice();
+    }
+  }, [sellSuccess, sellHash]);
+
+  useEffect(() => {
+    if (approveSuccess) {
+      refetchAllowance();
+    }
+  }, [approveSuccess]);
 
   // Real-time calculations
   const calculations = useMemo(() => {
     const inputAmount = parseFloat(amount) || 0;
-    const tokenPrice = mockToken.price;
-    const platformFeePercent = PLATFORM_FEE_BPS / 10000; // 1%
+    const tokenPrice = token.price || 0.000001;
     const gasMultiplier = GAS_MULTIPLIERS[chainId] || 1.2;
 
-    // Gas estimation (mock - would be real estimate in production)
-    const estimatedGasUnits = activeTab === 'buy' ? BigInt(150000) : BigInt(120000);
-    const gasPriceWei = gasPrice || BigInt(20000000000); // 20 gwei fallback
+    // Gas estimation
+    const estimatedGasUnits = activeTab === 'buy' ? BigInt(200000) : BigInt(150000);
+    const gasPriceWei = gasPrice || BigInt(20000000000);
     const estimatedGasWei = estimatedGasUnits * gasPriceWei * BigInt(Math.floor(gasMultiplier * 100)) / BigInt(100);
     const estimatedGasEth = parseFloat(formatEther(estimatedGasWei));
 
     if (activeTab === 'buy') {
-      // Buying tokens with ETH
-      const tokensReceived = inputAmount / tokenPrice;
+      const tokensReceived = tokenPrice > 0 ? inputAmount / tokenPrice : 0;
       const platformFee = inputAmount * platformFeePercent;
-      const totalCost = inputAmount + platformFee + estimatedGasEth;
-      const priceImpact = (inputAmount / mockToken.liquidity) * 100;
+      const totalCost = inputAmount + estimatedGasEth;
+      const priceImpact = token.liquidity > 0 ? (inputAmount / token.liquidity) * 100 : 0;
 
       return {
         inputAmount,
@@ -83,23 +209,22 @@ export default function TradePage() {
         rate: tokenPrice,
       };
     } else {
-      // Selling tokens for ETH
       const ethReceived = inputAmount * tokenPrice;
       const platformFee = ethReceived * platformFeePercent;
       const netReceived = ethReceived - platformFee;
-      const priceImpact = (ethReceived / mockToken.liquidity) * 100;
+      const priceImpact = token.liquidity > 0 ? (ethReceived / token.liquidity) * 100 : 0;
 
       return {
         inputAmount,
         outputAmount: netReceived,
         platformFee,
         estimatedGas: estimatedGasEth,
-        totalCost: estimatedGasEth, // Only gas for selling
+        totalCost: estimatedGasEth,
         priceImpact,
         rate: tokenPrice,
       };
     }
-  }, [amount, activeTab, chainId, gasPrice]);
+  }, [amount, activeTab, chainId, gasPrice, token.price, token.liquidity, platformFeePercent]);
 
   const handlePercentageClick = (percent: number) => {
     if (activeTab === 'buy' && ethBalance) {
@@ -111,12 +236,57 @@ export default function TradePage() {
     }
   };
 
+  const handleApprove = async () => {
+    if (!tokenAddress || !contractAddresses?.bondingCurve) return;
+
+    try {
+      await approve({
+        token: tokenAddress,
+        spender: contractAddresses.bondingCurve,
+        // Approve max uint256 for convenience
+        amount: BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935'),
+      });
+    } catch (err) {
+      console.error('Approval failed:', err);
+    }
+  };
+
   const handleTrade = async () => {
-    if (!isConnected || !amount) return;
-    setIsLoading(true);
-    // TODO: Implement actual trade
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsLoading(false);
+    if (!isConnected || !amount || !tokenAddress) return;
+
+    const parsedAmount = parseEther(amount);
+    const slippageMultiplier = BigInt(Math.floor((100 - slippage) * 100));
+
+    try {
+      if (activeTab === 'buy') {
+        // Calculate minimum tokens with slippage
+        const expectedTokens = calculations.outputAmount;
+        const minTokens = parseEther((expectedTokens * (100 - slippage) / 100).toString());
+
+        await buy({
+          token: tokenAddress,
+          minTokens,
+          value: parsedAmount,
+        });
+      } else {
+        // Check approval first
+        if (needsApproval) {
+          await handleApprove();
+          return;
+        }
+
+        // Calculate minimum ETH with slippage
+        const minEth = parseEther((calculations.outputAmount * (100 - slippage) / 100).toString());
+
+        await sell({
+          token: tokenAddress,
+          tokenAmount: parsedAmount,
+          minEth,
+        });
+      }
+    } catch (err) {
+      console.error('Trade failed:', err);
+    }
   };
 
   const formatNumber = (num: number, decimals = 2) => {
@@ -124,6 +294,43 @@ export default function TradePage() {
     if (num >= 1e3) return `${(num / 1e3).toFixed(decimals)}K`;
     return num.toFixed(decimals);
   };
+
+  const txError = buyError || sellError || approveError;
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <div className="container py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 space-y-6">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+                    <div className="h-8 w-24 bg-muted rounded animate-pulse" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="lg:col-span-4">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
+              <CardContent className="py-8">
+                <div className="space-y-4">
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                  <div className="h-14 bg-muted rounded animate-pulse" />
+                  <div className="h-14 bg-muted rounded animate-pulse" />
+                  <div className="h-12 bg-muted rounded animate-pulse" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-6">
@@ -135,45 +342,63 @@ export default function TradePage() {
             <CardContent className="py-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center text-white font-bold">
-                    {mockToken.symbol.slice(0, 2)}
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold flex items-center gap-2">
-                      {mockToken.name}
-                      <Badge variant="outline">{mockToken.symbol}</Badge>
-                    </h1>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-2xl font-bold">
-                        ${mockToken.price.toFixed(6)}
-                      </span>
-                      <Badge
-                        variant={mockToken.priceChange24h >= 0 ? 'success' : 'destructive'}
-                        className="gap-1"
-                      >
-                        {mockToken.priceChange24h >= 0 ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3" />
-                        )}
-                        {mockToken.priceChange24h.toFixed(2)}%
-                      </Badge>
+                  {tokenAddress ? (
+                    <>
+                      <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center text-white font-bold">
+                        {token.symbol.slice(0, 2)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h1 className="text-xl font-bold">{token.name}</h1>
+                          <Badge variant="outline">{token.symbol}</Badge>
+                          {'graduated' in token && token.graduated && (
+                            <Badge variant="success">Graduated</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-2xl font-bold">
+                            ${token.price.toFixed(8)}
+                          </span>
+                          {token.priceChange24h !== 0 && (
+                            <Badge
+                              variant={token.priceChange24h >= 0 ? 'success' : 'destructive'}
+                              className="gap-1"
+                            >
+                              {token.priceChange24h >= 0 ? (
+                                <TrendingUp className="w-3 h-3" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3" />
+                              )}
+                              {token.priceChange24h.toFixed(2)}%
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <Coins className="w-12 h-12 text-muted-foreground" />
+                      <div>
+                        <h1 className="text-xl font-bold text-muted-foreground">Select a Token</h1>
+                        <p className="text-sm text-muted-foreground">Choose a token to start trading</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-4 sm:gap-6 text-sm">
-                  <div className="min-w-[80px]">
-                    <p className="text-muted-foreground text-xs sm:text-sm">Market Cap</p>
-                    <p className="font-medium">${formatNumber(mockToken.marketCap)}</p>
-                  </div>
-                  <div className="min-w-[80px]">
-                    <p className="text-muted-foreground text-xs sm:text-sm">24h Volume</p>
-                    <p className="font-medium">${formatNumber(mockToken.volume24h)}</p>
-                  </div>
-                  <div className="min-w-[80px]">
-                    <p className="text-muted-foreground text-xs sm:text-sm">Liquidity</p>
-                    <p className="font-medium">${formatNumber(mockToken.liquidity)}</p>
-                  </div>
+                <div className="flex items-center gap-4">
+                  <TokenSelector selectedToken={tokenAddress} />
+                  {tokenAddress && (
+                    <div className="hidden sm:flex flex-wrap gap-4 sm:gap-6 text-sm">
+                      <div className="min-w-[80px]">
+                        <p className="text-muted-foreground text-xs">Liquidity</p>
+                        <p className="font-medium">{formatNumber(token.liquidity)} ETH</p>
+                      </div>
+                      <div className="min-w-[80px]">
+                        <p className="text-muted-foreground text-xs">Your Balance</p>
+                        <p className="font-medium">{formatNumber(tokenBalance)} {token.symbol}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -276,7 +501,7 @@ export default function TradePage() {
                         className="pr-20 text-lg h-14 bg-muted/50"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <span className="font-medium">{mockToken.symbol}</span>
+                        <span className="font-medium">{token.symbol}</span>
                       </div>
                     </div>
                   </div>
@@ -288,7 +513,7 @@ export default function TradePage() {
                     <div className="flex justify-between text-sm">
                       <Label>You Sell</Label>
                       <span className="text-muted-foreground">
-                        Balance: {formatNumber(tokenBalance)} {mockToken.symbol}
+                        Balance: {formatNumber(tokenBalance)} {token.symbol}
                       </span>
                     </div>
                     <div className="relative">
@@ -300,7 +525,7 @@ export default function TradePage() {
                         className="pr-20 text-lg h-14"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <span className="font-medium">{mockToken.symbol}</span>
+                        <span className="font-medium">{token.symbol}</span>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -373,7 +598,7 @@ export default function TradePage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Rate</span>
-                        <span>1 {mockToken.symbol} = {calculations.rate.toFixed(8)} ETH</span>
+                        <span>1 {token.symbol} = {calculations.rate.toFixed(8)} ETH</span>
                       </div>
 
                       <div className="flex justify-between items-center">
@@ -415,41 +640,91 @@ export default function TradePage() {
                 </Card>
               )}
 
+              {/* No Token Selected */}
+              {!tokenAddress && (
+                <div className="text-center py-4">
+                  <Coins className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">
+                    No token selected. Choose a token from the{' '}
+                    <a href="/tokens" className="text-primary hover:underline">
+                      explore page
+                    </a>.
+                  </p>
+                </div>
+              )}
+
+              {/* Chain Not Supported */}
+              {tokenAddress && !chainSupported && (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-medium">Testnet Required</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Switch to Sepolia or Base Sepolia to trade.
+                  </p>
+                </div>
+              )}
+
+              {/* Transaction Error */}
+              {txError && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-medium">Transaction Failed</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {txError.message || 'An error occurred'}
+                  </p>
+                </div>
+              )}
+
               {/* Trade Button */}
-              {isConnected ? (
+              {isConnected && tokenAddress ? (
                 <Button
                   className={`w-full h-12 text-lg font-semibold ${
                     activeTab === 'buy'
                       ? 'bg-success hover:bg-success/90'
+                      : needsApproval
+                      ? 'bg-primary hover:bg-primary/90'
                       : 'bg-destructive hover:bg-destructive/90'
                   }`}
-                  disabled={!amount || parseFloat(amount) <= 0 || isLoading}
+                  disabled={!amount || parseFloat(amount) <= 0 || isLoading || !chainSupported}
                   onClick={handleTrade}
                 >
                   {isLoading ? (
                     <>
-                      <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                      Processing...
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      {isApproving || isApproveConfirming
+                        ? 'Approving...'
+                        : isBuying || isSelling
+                        ? 'Confirm in Wallet...'
+                        : 'Processing...'}
+                    </>
+                  ) : needsApproval ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                      Approve {token.symbol}
                     </>
                   ) : (
                     <>
                       {activeTab === 'buy' ? (
                         <>
                           <TrendingUp className="w-5 h-5 mr-2" />
-                          Buy {mockToken.symbol}
+                          Buy {token.symbol}
                         </>
                       ) : (
                         <>
                           <TrendingDown className="w-5 h-5 mr-2" />
-                          Sell {mockToken.symbol}
+                          Sell {token.symbol}
                         </>
                       )}
                     </>
                   )}
                 </Button>
-              ) : (
+              ) : !isConnected ? (
                 <ConnectButton />
-              )}
+              ) : null}
 
               {/* Info */}
               <p className="text-xs text-muted-foreground text-center">
@@ -459,6 +734,43 @@ export default function TradePage() {
           </Card>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {txSuccess && lastTxHash && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Card className="max-w-md w-full mx-4 border-green-500/50">
+            <CardContent className="pt-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Trade Successful! 🎉</h3>
+              <p className="text-muted-foreground mb-4">
+                Your {activeTab === 'buy' ? 'purchase' : 'sale'} of {token.symbol} has been completed.
+              </p>
+              
+              <div className="p-3 bg-muted rounded-lg mb-4">
+                <p className="text-xs text-muted-foreground mb-1">Transaction Hash</p>
+                <a
+                  href={getExplorerTxUrl(chainId, lastTxHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-mono text-primary hover:underline flex items-center justify-center gap-1"
+                >
+                  {lastTxHash.slice(0, 10)}...{lastTxHash.slice(-8)}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() => setTxSuccess(false)}
+              >
+                Continue Trading
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

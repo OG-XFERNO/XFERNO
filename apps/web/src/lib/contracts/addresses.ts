@@ -32,11 +32,11 @@ export const CHAIN_CONFIGS: Record<number, ChainConfig> = {
     creationFee: BigInt('10000000000000000'), // 0.01 ETH
     blockExplorer: 'https://etherscan.io',
   },
-  // Sepolia Testnet
+  // Sepolia Testnet - DEPLOYED!
   11155111: {
     addresses: {
-      tokenFactory: '0x0000000000000000000000000000000000000000' as Address,
-      bondingCurve: '0x0000000000000000000000000000000000000000' as Address,
+      tokenFactory: '0x9c78920aAF6f7686438613b05d5921155f989884' as Address,
+      bondingCurve: '0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751' as Address,
     },
     creationFee: BigInt('1000000000000000'), // 0.001 ETH
     blockExplorer: 'https://sepolia.etherscan.io',
@@ -95,9 +95,16 @@ export function getContractAddresses(chainId: number): ContractAddresses | null 
 }
 
 /**
- * Check if contracts are deployed on a chain
+ * Check if a chain is in our supported list (testnets allowed for UI testing)
  */
 export function isChainSupported(chainId: number): boolean {
+  return chainId in CHAIN_CONFIGS;
+}
+
+/**
+ * Check if contracts are actually deployed on a chain
+ */
+export function areContractsDeployed(chainId: number): boolean {
   const config = CHAIN_CONFIGS[chainId];
   if (!config) return false;
   

@@ -35,7 +35,7 @@ contract Deploy is Script {
     address public bondingCurveAddress;
     address public tokenFactoryAddress;
 
-    function setUp() public {
+    function setUp() public virtual {
         // Load configuration from environment with defaults
         creationFee = vm.envOr("CREATION_FEE", uint256(0.001 ether)); // Lower for testnet
         virtualEthReserve = vm.envOr("VIRTUAL_ETH", uint256(30 ether));
