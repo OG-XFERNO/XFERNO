@@ -280,6 +280,7 @@ export function useBuyTokens() {
       functionName: 'buy',
       args: [params.token, params.minTokens],
       value: params.value,
+      gas: BigInt(300000), // Manual gas limit to prevent estimation issues
     });
   };
 
@@ -316,6 +317,7 @@ export function useSellTokens() {
       abi: bondingCurveAbi,
       functionName: 'sell',
       args: [params.token, params.tokenAmount, params.minEth],
+      gas: BigInt(250000), // Manual gas limit to prevent estimation issues
     });
   };
 

@@ -342,9 +342,10 @@ export default function TradePage() {
 
     try {
       if (activeTab === 'buy') {
-        // Calculate minimum tokens with slippage
-        const expectedTokens = calculations.outputAmount;
-        const minTokens = parseEther((expectedTokens * (100 - slippage) / 100).toString());
+        // For now, set minTokens to 0 (no slippage protection)
+        // TODO: Use contract's getBuyPrice to calculate expected tokens
+        // The current price-based calculation can overflow when price is very low
+        const minTokens = BigInt(0);
 
         await buy({
           token: tokenAddress,
