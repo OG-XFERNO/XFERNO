@@ -1,0 +1,70 @@
+{
+  "name": "xferno",
+  "version": "0.1.0",
+  "private": true,
+  "description": "XFERNO - Multi-chain token launchpad and DEX",
+  "keywords": ["web3", "defi", "launchpad", "dex", "multichain", "ethereum", "solana"],
+  "license": "MIT",
+  "author": "XFERNO Team",
+  "packageManager": "pnpm@9.14.4",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "test": "turbo test",
+    "test:watch": "turbo test:watch",
+    "clean": "turbo clean && rimraf node_modules",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter @xferno/api exec prisma generate",
+    "db:migrate": "pnpm --filter @xferno/api exec prisma migrate dev",
+    "db:migrate:deploy": "pnpm --filter @xferno/api exec prisma migrate deploy",
+    "db:push": "pnpm --filter @xferno/api exec prisma db push",
+    "db:seed": "pnpm --filter @xferno/api exec prisma db seed",
+    "db:studio": "pnpm --filter @xferno/api exec prisma studio",
+    "docker:dev": "docker compose up -d --build",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:stop": "docker compose stop",
+    "docker:restart": "docker compose restart",
+    "docker:logs": "docker compose logs -f",
+    "docker:logs:api": "docker compose logs -f api",
+    "docker:logs:web": "docker compose logs -f web",
+    "docker:ps": "docker compose ps",
+    "docker:clean": "docker compose down -v --rmi local",
+    "docker:prod:up": "docker compose -f docker-compose.prod.yml up -d --build",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml down",
+    "docker:db": "docker compose up -d postgres redis",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@types/node": "^20.10.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "next": "^14.2.0",
+    "prettier": "^3.2.0",
+    "prisma": "^5.20.0",
+    "rimraf": "^5.0.5",
+    "turbo": "^2.3.0",
+    "typescript": "^5.3.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

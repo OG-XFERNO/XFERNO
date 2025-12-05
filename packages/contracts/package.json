@@ -1,0 +1,22 @@
+{
+  "name": "@xferno/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "XFERNO Smart Contracts",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "test:gas": "forge test --gas-report",
+    "test:coverage": "forge coverage",
+    "test:fuzz": "forge test --fuzz-runs 10000",
+    "lint": "forge fmt --check",
+    "lint:fix": "forge fmt",
+    "clean": "forge clean",
+    "snapshot": "forge snapshot",
+    "deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
+    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify",
+    "deploy:base-sepolia": "forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify",
+    "verify": "forge verify-contract"
+  },
+  "devDependencies": {}
+}

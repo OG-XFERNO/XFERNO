@@ -1,0 +1,73 @@
+# ==============================================
+# XFERNO API Dockerfile
+# ==============================================
+
+# Base stage
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
+RUN corepack enable && corepack prepare pnpm@9 --activate
+WORKDIR /app
+
+# Development stage - installs all deps fresh
+FROM base AS development
+ENV NODE_ENV=development
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/types/package.json ./packages/types/
+
+# Copy source code BEFORE install (exclude node_modules via .dockerignore)
+COPY apps/api/src ./apps/api/src
+COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/nest-cli.json ./apps/api/
+COPY apps/api/tsconfig.json ./apps/api/
+COPY packages/types/src ./packages/types/src
+COPY packages/types/tsconfig.json ./packages/types/
+
+# Install dependencies (creates proper Linux symlinks)
+RUN pnpm install
+
+# Generate Prisma client
+RUN pnpm exec prisma generate --schema=apps/api/prisma/schema.prisma
+
+EXPOSE 3002
+WORKDIR /app
+CMD ["sh", "-c", "cd /app/apps/api && pnpm exec nest start --watch"]
+
+# Builder stage
+FROM base AS builder
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/api/src ./apps/api/src
+COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/nest-cli.json apps/api/tsconfig.json ./apps/api/
+COPY packages/types/package.json ./packages/types/
+COPY packages/types/src ./packages/types/src
+COPY packages/types/tsconfig.json ./packages/types/
+RUN pnpm install --frozen-lockfile
+RUN pnpm exec prisma generate --schema=apps/api/prisma/schema.prisma
+RUN pnpm --filter @xferno/api build
+
+# Production stage
+FROM node:20-alpine AS production
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nestjs
+
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/prisma ./prisma
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./
+
+USER nestjs
+
+EXPOSE 3002
+
+CMD ["node", "dist/main"]

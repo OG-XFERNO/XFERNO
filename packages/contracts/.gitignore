@@ -1,0 +1,14 @@
+# Foundry
+/out/
+/cache/
+/broadcast/
+
+# Dependencies
+/lib/
+
+# Coverage
+/lcov.info
+
+# Local env
+.env
+.env.local

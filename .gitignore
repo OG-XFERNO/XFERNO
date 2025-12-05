@@ -1,0 +1,95 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+.output/
+out/
+.turbo/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma
+prisma/client/
+
+# Docker
+.docker/
+
+# Foundry / Forge
+cache/
+out/
+broadcast/
+
+# ZK Circuits
+circuits/build/
+circuits/*.r1cs
+circuits/*.sym
+circuits/*.wasm
+powers_of_tau/
+
+# PWA (next-pwa generated)
+**/public/sw.js
+**/public/sw.js.map
+**/public/workbox-*.js
+**/public/workbox-*.js.map
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Secrets (never commit these)
+*.pem
+*.key
+*.p12
+secrets/
+
+# IDE specific
+*.iml
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace

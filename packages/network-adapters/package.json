@@ -1,0 +1,52 @@
+{
+  "name": "@xferno/network-adapters",
+  "version": "0.1.0",
+  "private": true,
+  "description": "XFERNO multi-chain network adapters",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./evm": {
+      "import": "./dist/evm/index.mjs",
+      "require": "./dist/evm/index.js",
+      "types": "./dist/evm/index.d.ts"
+    },
+    "./solana": {
+      "import": "./dist/solana/index.mjs",
+      "require": "./dist/solana/index.js",
+      "types": "./dist/solana/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@xferno/types": "workspace:*",
+    "viem": "^2.21.0",
+    "@solana/web3.js": "^1.95.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.0",
+    "eslint": "^8.56.0",
+    "rimraf": "^5.0.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

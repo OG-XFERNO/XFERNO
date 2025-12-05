@@ -1,0 +1,47 @@
+{
+  "name": "@xferno/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "XFERNO Browser Extension",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "build:chrome": "plasmo build --target=chrome-mv3",
+    "build:firefox": "plasmo build --target=firefox-mv2",
+    "package": "plasmo package",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rimraf .plasmo build"
+  },
+  "dependencies": {
+    "@xferno/types": "workspace:*",
+    "plasmo": "^0.88.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "viem": "^2.21.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.56.0",
+    "postcss": "^8.4.0",
+    "rimraf": "^5.0.5",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.0"
+  },
+  "manifest": {
+    "host_permissions": [
+      "https://*.xferno.io/*"
+    ],
+    "permissions": [
+      "storage",
+      "activeTab"
+    ]
+  }
+}

@@ -1,0 +1,111 @@
+# XFERNO Docker Compose - Development
+# Usage: docker compose up -d (start) | docker compose down (stop)
+
+services:
+  # ===========================================
+  # DATABASE SERVICES
+  # ===========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: xferno-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xferno}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xferno_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-xferno}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xferno}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xferno-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: xferno-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xferno-network
+
+  # ===========================================
+  # APPLICATION SERVICES
+  # ===========================================
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+      target: development
+    container_name: xferno-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xferno}:${POSTGRES_PASSWORD:-xferno_dev}@postgres:5432/${POSTGRES_DB:-xferno}
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://web:3000
+      NODE_PATH: /app/node_modules
+    ports:
+      - "${API_PORT:-3002}:3002"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/prisma:/app/apps/api/prisma
+      - ./packages:/app/packages
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - xferno-network
+    command: sh -c "/app/node_modules/.bin/prisma migrate deploy --schema=/app/apps/api/prisma/schema.prisma && cd /app/apps/api && /app/node_modules/.bin/nest start --watch"
+    working_dir: /app/apps/api
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      target: development
+    container_name: xferno-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3002}
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/web/.next
+    depends_on:
+      - api
+    networks:
+      - xferno-network
+    working_dir: /app/apps/web
+    command: /app/node_modules/.bin/next dev
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  xferno-network:
+    driver: bridge

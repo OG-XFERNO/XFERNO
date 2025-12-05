@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============== ENUMS ==============
+
+enum NetworkType {
+  EVM
+  SOLANA
+  MOVE
+  OTHER
+}
+
+enum TokenStandard {
+  ERC20
+  SPL
+  MOVE
+}
+
+enum LaunchMode {
+  ZK_SINGLE_CHAIN
+  ZK_SPLIT_MULTICHAIN
+  L1_SINGLE_CHAIN
+  L1_SPLIT_MULTICHAIN
+}
+
+enum TokenStatus {
+  DRAFT
+  PRESALE_ACTIVE
+  GRADUATION_PENDING
+  GRADUATED_DEPLOYING
+  LIVE_MULTICHAIN
+  PAUSED
+  FAILED
+}
+
+enum DeploymentStatus {
+  PENDING
+  DEPLOYING
+  DEPLOYED
+  VERIFIED
+  FAILED
+}
+
+enum BondingCurveType {
+  LINEAR
+  EXPONENTIAL
+  SIGMOID
+  CUSTOM
+}
+
+enum KYCStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum UserRole {
+  USER
+  CREATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+// ============== MODELS ==============
+
+model Network {
+  id                   String            @id @default(uuid())
+  name                 String            @unique
+  chainId              Int?
+  type                 NetworkType
+  symbol               String
+  tokenStandard        TokenStandard
+  rpcUrl               String
+  wsUrl                String?
+  explorerUrl          String?
+  isEnabledForBase     Boolean           @default(false)
+  isEnabledForSplit    Boolean           @default(false)
+  gasToken             String?
+  avgBlockTimeMs       Int?
+  iconUrl              String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  tokensAsBase         Token[]           @relation("BaseChain")
+  tokenDeployments     TokenDeployment[]
+  presaleContributions PresaleContribution[]
+
+  @@index([type])
+  @@index([isEnabledForBase])
+  @@index([isEnabledForSplit])
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String?   @unique
+  username         String?   @unique
+  displayName      String?
+  avatarUrl        String?
+  bio              String?
+  passwordHash     String?
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String?
+  diditId          String?   @unique
+  googleId         String?   @unique
+  twitterId        String?   @unique
+  kycStatus        KYCStatus @default(NONE)
+  kycVerifiedAt    DateTime?
+  role             UserRole  @default(USER)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastLoginAt      DateTime?
+
+  wallets              Wallet[]
+  createdTokens        Token[]               @relation("Creator")
+  presaleContributions PresaleContribution[]
+
+  @@index([email])
+  @@index([role])
+  @@index([kycStatus])
+}
+
+model Wallet {
+  id          String      @id @default(uuid())
+  userId      String
+  address     String
+  networkType NetworkType
+  isPrimary   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([address, networkType])
+  @@index([userId])
+}
+
+model Token {
+  id                String           @id @default(uuid())
+  name              String
+  symbol            String
+  description       String?
+  imageUrl          String?
+  launchMode        LaunchMode
+  baseChainId       String
+  splitNetworkIds   String[]
+  totalSupply       Decimal          @db.Decimal(78, 0)
+  decimals          Int              @default(18)
+  graduationTarget  Decimal          @db.Decimal(78, 0)
+  graduationAsset   String           @default("ETH")
+  raisedAmount      Decimal          @db.Decimal(78, 0) @default(0)
+  bondingCurveType  BondingCurveType @default(EXPONENTIAL)
+  initialPrice      Decimal?         @db.Decimal(78, 0)
+  priceMultiplier   Decimal?         @db.Decimal(10, 6)
+  maxPresaleSupply  Decimal?         @db.Decimal(78, 0)
+  status            TokenStatus      @default(DRAFT)
+  creatorId         String
+  creatorMultisig   String?
+  websiteUrl        String?
+  twitterUrl        String?
+  discordUrl        String?
+  telegramUrl       String?
+  customLinks       Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  presaleStartedAt  DateTime?
+  graduatedAt       DateTime?
+
+  baseChain     Network               @relation("BaseChain", fields: [baseChainId], references: [id])
+  creator       User                  @relation("Creator", fields: [creatorId], references: [id])
+  deployments   TokenDeployment[]
+  contributions PresaleContribution[]
+  graduationLogs GraduationLog[]
+
+  @@index([status])
+  @@index([creatorId])
+  @@index([launchMode])
+  @@index([createdAt])
+}
+
+model TokenDeployment {
+  id               String           @id @default(uuid())
+  tokenId          String
+  networkId        String
+  tokenAddress     String?
+  bridgeAddress    String?
+  poolAddress      String?
+  status           DeploymentStatus @default(PENDING)
+  deploymentTxHash String?
+  verified         Boolean          @default(false)
+  errorMessage     String?
+  retryCount       Int              @default(0)
+  deployedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  token   Token   @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  network Network @relation(fields: [networkId], references: [id])
+
+  @@unique([tokenId, networkId])
+  @@index([status])
+}
+
+model PresaleContribution {
+  id              String   @id @default(uuid())
+  tokenId         String
+  userId          String
+  networkId       String
+  amount          Decimal  @db.Decimal(78, 0)
+  tokensReceived  Decimal  @db.Decimal(78, 0)
+  priceAtPurchase Decimal  @db.Decimal(78, 0)
+  txHash          String?
+  createdAt       DateTime @default(now())
+
+  token   Token   @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  network Network @relation(fields: [networkId], references: [id])
+
+  @@index([tokenId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model GraduationLog {
+  id                String   @id @default(uuid())
+  tokenId           String
+  totalRaised       Decimal? @db.Decimal(78, 0)
+  gasSpent          Decimal? @db.Decimal(78, 0)
+  lpSeeded          Decimal? @db.Decimal(78, 0)
+  treasuryRemainder Decimal? @db.Decimal(78, 0)
+  status            String?
+  errorMessage      String?
+  networkBreakdown  Json?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  token Token @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId])
+  @@index([status])
+}
+
+model Multisig {
+  id        String   @id @default(uuid())
+  address   String
+  networkId String
+  signers   String[]
+  threshold Int
+  ownerType String
+  ownerId   String?
+  createdAt DateTime @default(now())
+
+  @@unique([address, networkId])
+  @@index([ownerType, ownerId])
+}
+
+model AdminLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String
+  targetType String
+  targetId   String?
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  enabled     Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
