@@ -1,9 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useChainId } from 'wagmi';
+import { formatEther } from 'viem';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { useRecentTrades, useTradeSocket, type Trade as ApiTrade } from '@/lib/api/trading';
+import { cn } from '@/lib/utils';
 
 interface Trade {
   id: string;
@@ -12,12 +16,16 @@ interface Trade {
   amount: number;
   total: number;
   time: Date;
+  txHash?: string;
 }
 
-// Generate mock recent trades
-function generateMockTrades(count: number = 20): Trade[] {
+interface RecentTradesProps {
+  tokenAddress?: string;
+}
+
+// Generate mock recent trades (fallback)
+function generateMockTrades(count: number = 20, basePrice: number = 0.00042): Trade[] {
   const trades: Trade[] = [];
-  const basePrice = 0.00042;
   const now = Date.now();
 
   for (let i = 0; i < count; i++) {
@@ -38,8 +46,37 @@ function generateMockTrades(count: number = 20): Trade[] {
   return trades;
 }
 
-export function RecentTrades() {
-  const trades = useMemo(() => generateMockTrades(20), []);
+// Convert API trades to display format
+function apiTradesToDisplay(apiTrades: ApiTrade[]): Trade[] {
+  return apiTrades.map((t) => ({
+    id: t.id,
+    type: t.tradeType === 'BUY' ? 'buy' : 'sell',
+    price: parseFloat(t.pricePerToken),
+    amount: parseFloat(t.tokenAmount) / 1e18, // Convert from wei
+    total: parseFloat(t.ethAmount) / 1e18, // Convert from wei
+    time: new Date(t.blockTimestamp),
+    txHash: t.txHash,
+  }));
+}
+
+export function RecentTrades({ tokenAddress }: RecentTradesProps) {
+  const chainId = useChainId();
+  
+  // Fetch trades from API
+  const { data: apiTrades, isLoading } = useRecentTrades(tokenAddress, chainId);
+  
+  // Real-time WebSocket updates
+  const { isConnected, lastTrade } = useTradeSocket(tokenAddress, chainId);
+
+  // Convert API trades or use mock data
+  const trades = useMemo(() => {
+    if (apiTrades && apiTrades.length > 0) {
+      return apiTradesToDisplay(apiTrades);
+    }
+    return generateMockTrades(20);
+  }, [apiTrades]);
+
+  const hasRealData = apiTrades && apiTrades.length > 0;
 
   const formatPrice = (price: number) => price.toFixed(8);
   const formatAmount = (amount: number) => {
@@ -58,7 +95,29 @@ export function RecentTrades() {
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Recent Trades</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">Recent Trades</CardTitle>
+          <span className={cn(
+            'text-xs px-2 py-0.5 rounded flex items-center gap-1',
+            hasRealData 
+              ? 'bg-green-500/20 text-green-400' 
+              : 'bg-yellow-500/20 text-yellow-400'
+          )}>
+            {isLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : hasRealData ? (
+              <>
+                <span className={cn(
+                  'w-1.5 h-1.5 rounded-full',
+                  isConnected ? 'bg-green-400 animate-pulse' : 'bg-green-400'
+                )} />
+                Live
+              </>
+            ) : (
+              'Demo'
+            )}
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {/* Header */}

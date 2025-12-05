@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Info } from 'lucide-react';
 
 interface OrderBookEntry {
   price: number;
@@ -10,9 +11,12 @@ interface OrderBookEntry {
   total: number;
 }
 
-// Generate mock order book data
-function generateMockOrderBook(): { bids: OrderBookEntry[]; asks: OrderBookEntry[] } {
-  const basePrice = 0.00042;
+interface OrderBookProps {
+  tokenAddress?: string;
+}
+
+// Generate mock order book data (simulated liquidity depth for AMM)
+function generateMockOrderBook(basePrice: number = 0.00042): { bids: OrderBookEntry[]; asks: OrderBookEntry[] } {
   const bids: OrderBookEntry[] = [];
   const asks: OrderBookEntry[] = [];
 
@@ -41,7 +45,8 @@ function generateMockOrderBook(): { bids: OrderBookEntry[]; asks: OrderBookEntry
   return { bids, asks: asks.reverse() };
 }
 
-export function OrderBook() {
+export function OrderBook({ tokenAddress }: OrderBookProps) {
+  // Note: AMMs don't have traditional order books - this shows simulated liquidity depth
   const { bids, asks } = useMemo(() => generateMockOrderBook(), []);
 
   const maxTotal = Math.max(
@@ -58,7 +63,17 @@ export function OrderBook() {
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Order Book</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-1">
+            Liquidity Depth
+            <span className="text-muted-foreground" title="AMM liquidity visualization">
+              <Info className="w-3 h-3" />
+            </span>
+          </CardTitle>
+          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+            Simulated
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {/* Header */}

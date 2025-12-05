@@ -5,6 +5,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { join } from 'path';
 
 // Core modules
@@ -19,6 +20,7 @@ import { GraduationModule } from './modules/graduation/graduation.module';
 import { BridgeModule } from './modules/bridge/bridge.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ZKModule } from './modules/zk/zk.module';
+import { IndexerModule } from './modules/indexer/indexer.module';
 
 @Module({
   imports: [
@@ -61,6 +63,9 @@ import { ZKModule } from './modules/zk/zk.module';
       ttl: 60000, // 1 minute default
     }),
 
+    // Event Emitter for real-time updates
+    EventEmitterModule.forRoot(),
+
     // Core
     PrismaModule,
     HealthModule,
@@ -73,6 +78,7 @@ import { ZKModule } from './modules/zk/zk.module';
     BridgeModule,
     AdminModule,
     ZKModule,
+    IndexerModule,
   ],
 })
 export class AppModule {}

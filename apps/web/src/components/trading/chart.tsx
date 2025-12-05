@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickData, Time } from 'lightweight-charts';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, ISeriesApi, SeriesType } from 'lightweight-charts';
+import { useChainId } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { usePriceCandles, intervalToApiFormat, type PriceCandle } from '@/lib/api/trading';
+import { Loader2 } from 'lucide-react';
 
 const timeframes = [
   { label: '1m', value: '1' },
@@ -14,10 +17,10 @@ const timeframes = [
   { label: '1D', value: '1440' },
 ];
 
-// Generate mock candlestick data
-function generateMockData(count: number = 100): CandlestickData[] {
+// Generate mock candlestick data (fallback when no real data)
+function generateMockData(count: number = 100, basePrice: number = 0.0001): CandlestickData[] {
   const data: CandlestickData[] = [];
-  let basePrice = 0.0004;
+  let price = basePrice;
   const now = Math.floor(Date.now() / 1000);
   const interval = 60 * 5; // 5 minutes
 
@@ -25,30 +28,57 @@ function generateMockData(count: number = 100): CandlestickData[] {
     const time = (now - i * interval) as Time;
     const volatility = 0.02;
     const change = (Math.random() - 0.5) * volatility;
-    const open = basePrice;
-    const close = basePrice * (1 + change);
+    const open = price;
+    const close = price * (1 + change);
     const high = Math.max(open, close) * (1 + Math.random() * 0.01);
     const low = Math.min(open, close) * (1 - Math.random() * 0.01);
 
-    data.push({
-      time,
-      open,
-      high,
-      low,
-      close,
-    });
-
-    basePrice = close;
+    data.push({ time, open, high, low, close });
+    price = close;
   }
 
   return data;
 }
 
-export function TradingChart() {
+// Convert API candles to chart format
+function apiCandlesToChartData(candles: PriceCandle[]): CandlestickData[] {
+  return candles.map((c) => ({
+    time: c.time as Time,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+  }));
+}
+
+interface TradingChartProps {
+  tokenAddress?: string;
+  currentPrice?: number;
+}
+
+export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState('5');
   const [chartType, setChartType] = useState<'candles' | 'line'>('candles');
+  const chainId = useChainId();
+
+  // Fetch real candle data from API
+  const interval = intervalToApiFormat(selectedTimeframe);
+  const { data: apiCandles, isLoading } = usePriceCandles(tokenAddress, chainId, interval);
+
+  // Convert API data or use mock data
+  const chartData = useMemo(() => {
+    if (apiCandles && apiCandles.length > 0) {
+      return apiCandlesToChartData(apiCandles);
+    }
+    // Fall back to mock data with current price as base
+    return generateMockData(100, currentPrice || 0.0001);
+  }, [apiCandles, currentPrice]);
+
+  const hasRealData = apiCandles && apiCandles.length > 0;
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -113,9 +143,10 @@ export function TradingChart() {
       wickDownColor: '#ef4444',
     });
 
-    // Set data
-    const data = generateMockData(100);
-    candlestickSeries.setData(data);
+    candleSeriesRef.current = candlestickSeries;
+
+    // Set data from API or mock
+    candlestickSeries.setData(chartData);
 
     // Add volume series
     const volumeSeries = chart.addHistogramSeries({
@@ -126,6 +157,8 @@ export function TradingChart() {
       priceScaleId: '',
     });
 
+    volumeSeriesRef.current = volumeSeries;
+
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.8,
@@ -133,10 +166,10 @@ export function TradingChart() {
       },
     });
 
-    // Generate volume data
-    const volumeData = data.map((candle) => ({
+    // Generate volume data from candles
+    const volumeData = chartData.map((candle) => ({
       time: candle.time,
-      value: Math.random() * 10000 + 1000,
+      value: hasRealData ? (apiCandles?.find(c => c.time === (candle.time as number))?.volume || 1000) : Math.random() * 10000 + 1000,
       color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
     }));
 
@@ -162,7 +195,7 @@ export function TradingChart() {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [selectedTimeframe]);
+  }, [selectedTimeframe, chartData, hasRealData, apiCandles]);
 
   return (
     <div className="w-full">
@@ -185,6 +218,21 @@ export function TradingChart() {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          {/* Data source indicator */}
+          <span className={cn(
+            'text-xs px-2 py-0.5 rounded',
+            hasRealData 
+              ? 'bg-green-500/20 text-green-400' 
+              : 'bg-yellow-500/20 text-yellow-400'
+          )}>
+            {isLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+            ) : hasRealData ? (
+              '● Live'
+            ) : (
+              '◌ Demo'
+            )}
+          </span>
           <Button
             variant={chartType === 'candles' ? 'default' : 'ghost'}
             size="sm"

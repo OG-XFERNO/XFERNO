@@ -491,14 +491,14 @@ export default function TradePage() {
           {/* Chart */}
           <Card className="border-border/50 bg-card/50 backdrop-blur">
             <CardContent className="p-0">
-              <TradingChart />
+              <TradingChart tokenAddress={tokenAddress} currentPrice={token.price} />
             </CardContent>
           </Card>
 
           {/* Order Book & Recent Trades */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <OrderBook />
-            <RecentTrades />
+            <OrderBook tokenAddress={tokenAddress} />
+            <RecentTrades tokenAddress={tokenAddress} />
           </div>
         </div>
 

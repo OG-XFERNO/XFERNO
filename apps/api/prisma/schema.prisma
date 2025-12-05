@@ -283,3 +283,88 @@ model FeatureFlag {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ============== INDEXER MODELS ==============
+
+enum TradeType {
+  BUY
+  SELL
+}
+
+model Trade {
+  id              String    @id @default(uuid())
+  tokenAddress    String
+  traderAddress   String
+  tradeType       TradeType
+  ethAmount       Decimal   @db.Decimal(78, 0)
+  tokenAmount     Decimal   @db.Decimal(78, 0)
+  pricePerToken   Decimal   @db.Decimal(78, 18)
+  txHash          String    @unique
+  blockNumber     BigInt
+  blockTimestamp  DateTime
+  logIndex        Int
+  chainId         Int
+  createdAt       DateTime  @default(now())
+
+  @@index([tokenAddress])
+  @@index([traderAddress])
+  @@index([blockTimestamp])
+  @@index([chainId, tokenAddress])
+  @@index([tokenAddress, blockTimestamp])
+}
+
+model PriceCandle {
+  id            String   @id @default(uuid())
+  tokenAddress  String
+  chainId       Int
+  interval      String   // '1m', '5m', '15m', '1h', '4h', '1d'
+  openTime      DateTime
+  closeTime     DateTime
+  open          Decimal  @db.Decimal(78, 18)
+  high          Decimal  @db.Decimal(78, 18)
+  low           Decimal  @db.Decimal(78, 18)
+  close         Decimal  @db.Decimal(78, 18)
+  volume        Decimal  @db.Decimal(78, 0)
+  tradeCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tokenAddress, chainId, interval, openTime])
+  @@index([tokenAddress, chainId, interval])
+  @@index([openTime])
+}
+
+model IndexerState {
+  id              String   @id @default(uuid())
+  chainId         Int      @unique
+  lastBlockNumber BigInt
+  lastBlockHash   String?
+  isRunning       Boolean  @default(false)
+  lastError       String?
+  updatedAt       DateTime @updatedAt
+
+  @@index([chainId])
+}
+
+model TokenStats {
+  id               String   @id @default(uuid())
+  tokenAddress     String
+  chainId          Int
+  currentPrice     Decimal  @db.Decimal(78, 18)
+  priceChange24h   Decimal  @db.Decimal(10, 4) @default(0)
+  volume24h        Decimal  @db.Decimal(78, 0) @default(0)
+  trades24h        Int      @default(0)
+  totalVolume      Decimal  @db.Decimal(78, 0) @default(0)
+  totalTrades      Int      @default(0)
+  holders          Int      @default(0)
+  marketCap        Decimal  @db.Decimal(78, 0) @default(0)
+  liquidity        Decimal  @db.Decimal(78, 0) @default(0)
+  allTimeHigh      Decimal  @db.Decimal(78, 18) @default(0)
+  allTimeLow       Decimal  @db.Decimal(78, 18) @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@unique([tokenAddress, chainId])
+  @@index([chainId])
+  @@index([volume24h])
+  @@index([priceChange24h])
+}
