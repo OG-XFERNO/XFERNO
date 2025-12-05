@@ -249,8 +249,8 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Watching events for chain ${chainId}`);
   }
 
-  private async processBuyEvent(chainId: number, client: PublicClient, log: Log<bigint, number, false, typeof TOKENS_BOUGHT_EVENT, true>) {
-    if (!log.args.buyer || !log.args.token) return;
+  private async processBuyEvent(chainId: number, client: PublicClient, log: any) {
+    if (!log.args?.buyer || !log.args?.token) return;
 
     const block = await client.getBlock({ blockNumber: log.blockNumber! });
     
@@ -271,8 +271,8 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
     await this.saveTrade(trade);
   }
 
-  private async processSellEvent(chainId: number, client: PublicClient, log: Log<bigint, number, false, typeof TOKENS_SOLD_EVENT, true>) {
-    if (!log.args.seller || !log.args.token) return;
+  private async processSellEvent(chainId: number, client: PublicClient, log: any) {
+    if (!log.args?.seller || !log.args?.token) return;
 
     const block = await client.getBlock({ blockNumber: log.blockNumber! });
     

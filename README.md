@@ -130,6 +130,34 @@ pnpm dev
 | `pnpm docker:db` | Start only database services (PostgreSQL + Redis) |
 | `pnpm docker:prod:up` | Start production environment |
 
+### Docker Compose Direct Commands
+
+```bash
+# Start with live logs (attached mode)
+docker compose up
+
+# Start in background (detached)
+docker compose up -d
+
+# View live logs (for detached containers)
+docker compose logs -f
+
+# View specific service logs
+docker compose logs -f api
+docker compose logs -f web
+
+# Restart all services
+docker compose restart
+
+# Stop all services
+docker compose down
+
+# Full reset (wipe database & volumes)
+docker compose down -v
+docker compose up -d
+pnpm db:push
+```
+
 ### Database Commands
 | Script | Description |
 |--------|-------------|
