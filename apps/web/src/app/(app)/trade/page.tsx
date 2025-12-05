@@ -1,8 +1,21 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useAccount, useBalance, useChainId, useGasPrice } from 'wagmi';
-import { formatEther, parseEther } from 'viem';
+import { useSearchParams } from 'next/navigation';
+import { formatEther, parseEther, type Address } from 'viem';
+import {
+  useTokenInfo,
+  useTokenBalance,
+  useTokenState,
+  useCurrentPrice,
+  useBuyTokens,
+  useSellTokens,
+  useApproveToken,
+  useTokenAllowance,
+  useCurveParams,
+  getContractAddresses,
+} from '@/lib/contracts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,11 +38,13 @@ import {
   Zap,
   AlertTriangle,
   RefreshCw,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 
-// Mock token data - replace with real data
-const mockToken = {
-  address: '0x1234567890abcdef1234567890abcdef12345678',
+// Default mock token data - used when no token is selected
+const defaultToken = {
+  address: '0x1234567890abcdef1234567890abcdef12345678' as Address,
   name: 'Example Token',
   symbol: 'EXMPL',
   price: 0.00042,
@@ -40,6 +55,10 @@ const mockToken = {
 };
 
 export default function TradePage() {
+  const searchParams = useSearchParams();
+  const tokenParam = searchParams.get('token');
+  const tokenAddress = tokenParam as Address | undefined;
+
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: ethBalance } = useBalance({ address });
@@ -48,16 +67,57 @@ export default function TradePage() {
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(0.5);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock token balance
-  const tokenBalance = 50000;
+  // Contract addresses
+  const contractAddresses = getContractAddresses(chainId);
+
+  // Token info from contract
+  const tokenInfo = useTokenInfo(tokenAddress);
+  const { data: tokenBalanceData } = useTokenBalance(tokenAddress, address);
+  const { data: tokenState } = useTokenState(tokenAddress);
+  const { data: currentPrice } = useCurrentPrice(tokenAddress);
+  const { data: curveParams } = useCurveParams();
+  const { data: allowance } = useTokenAllowance(
+    tokenAddress,
+    address,
+    contractAddresses?.bondingCurve
+  );
+
+  // Trading hooks
+  const { buy, isPending: isBuying, isConfirming: isBuyConfirming, isSuccess: buySuccess } = useBuyTokens();
+  const { sell, isPending: isSelling, isConfirming: isSellConfirming, isSuccess: sellSuccess } = useSellTokens();
+  const { approve, isPending: isApproving, isConfirming: isApproveConfirming } = useApproveToken();
+
+  // Determine which token data to use
+  const token = tokenAddress && tokenInfo.name ? {
+    address: tokenAddress,
+    name: tokenInfo.name,
+    symbol: tokenInfo.symbol || 'TOKEN',
+    price: currentPrice ? parseFloat(formatEther(currentPrice)) : defaultToken.price,
+    priceChange24h: defaultToken.priceChange24h, // Would need price history
+    volume24h: defaultToken.volume24h, // Would need indexer
+    marketCap: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) : defaultToken.marketCap,
+    liquidity: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) : defaultToken.liquidity,
+  } : defaultToken;
+
+  // Token balance
+  const tokenBalance = tokenBalanceData ? parseFloat(formatEther(tokenBalanceData)) : 0;
+
+  // Check if approval is needed for selling
+  const needsApproval = activeTab === 'sell' && 
+    tokenAddress && 
+    contractAddresses?.bondingCurve &&
+    allowance !== undefined && 
+    parseFloat(amount || '0') > 0 &&
+    allowance < parseEther(amount || '0');
+
+  const isLoading = isBuying || isBuyConfirming || isSelling || isSellConfirming || isApproving || isApproveConfirming;
 
   // Real-time calculations
   const calculations = useMemo(() => {
     const inputAmount = parseFloat(amount) || 0;
-    const tokenPrice = mockToken.price;
-    const platformFeePercent = PLATFORM_FEE_BPS / 10000; // 1%
+    const tokenPrice = token.price;
+    const platformFeePercent = curveParams ? Number(curveParams.feeBps) / 10000 : 0.01;
     const gasMultiplier = GAS_MULTIPLIERS[chainId] || 1.2;
 
     // Gas estimation (mock - would be real estimate in production)
@@ -71,7 +131,7 @@ export default function TradePage() {
       const tokensReceived = inputAmount / tokenPrice;
       const platformFee = inputAmount * platformFeePercent;
       const totalCost = inputAmount + platformFee + estimatedGasEth;
-      const priceImpact = (inputAmount / mockToken.liquidity) * 100;
+      const priceImpact = (inputAmount / token.liquidity) * 100;
 
       return {
         inputAmount,
@@ -87,7 +147,7 @@ export default function TradePage() {
       const ethReceived = inputAmount * tokenPrice;
       const platformFee = ethReceived * platformFeePercent;
       const netReceived = ethReceived - platformFee;
-      const priceImpact = (ethReceived / mockToken.liquidity) * 100;
+      const priceImpact = (ethReceived / token.liquidity) * 100;
 
       return {
         inputAmount,
@@ -99,7 +159,7 @@ export default function TradePage() {
         rate: tokenPrice,
       };
     }
-  }, [amount, activeTab, chainId, gasPrice]);
+  }, [amount, activeTab, chainId, gasPrice, token.price, token.liquidity, curveParams]);
 
   const handlePercentageClick = (percent: number) => {
     if (activeTab === 'buy' && ethBalance) {
@@ -112,11 +172,45 @@ export default function TradePage() {
   };
 
   const handleTrade = async () => {
-    if (!isConnected || !amount) return;
-    setIsLoading(true);
-    // TODO: Implement actual trade
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsLoading(false);
+    if (!isConnected || !amount || !tokenAddress) return;
+
+    const parsedAmount = parseEther(amount);
+    const slippageMultiplier = BigInt(Math.floor((100 - slippage) * 100)); // e.g., 99.5% -> 9950
+
+    try {
+      if (activeTab === 'buy') {
+        // Calculate minimum tokens to receive with slippage
+        const minTokens = (parsedAmount * slippageMultiplier) / BigInt(10000);
+        
+        await buy({
+          token: tokenAddress,
+          minTokens,
+          value: parsedAmount,
+        });
+      } else {
+        // For selling, check if we need approval first
+        if (needsApproval && contractAddresses?.bondingCurve) {
+          await approve({
+            token: tokenAddress,
+            spender: contractAddresses.bondingCurve,
+            amount: parsedAmount,
+          });
+          return; // Wait for approval to complete, then user can try again
+        }
+
+        // Calculate minimum ETH to receive with slippage
+        const expectedEth = parseEther(calculations.outputAmount.toString());
+        const minEth = (expectedEth * slippageMultiplier) / BigInt(10000);
+
+        await sell({
+          token: tokenAddress,
+          tokenAmount: parsedAmount,
+          minEth,
+        });
+      }
+    } catch (err) {
+      console.error('Trade failed:', err);
+    }
   };
 
   const formatNumber = (num: number, decimals = 2) => {
@@ -136,27 +230,27 @@ export default function TradePage() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center text-white font-bold">
-                    {mockToken.symbol.slice(0, 2)}
+                    {token.symbol.slice(0, 2)}
                   </div>
                   <div>
                     <h1 className="text-xl font-bold flex items-center gap-2">
-                      {mockToken.name}
-                      <Badge variant="outline">{mockToken.symbol}</Badge>
+                      {token.name}
+                      <Badge variant="outline">{token.symbol}</Badge>
                     </h1>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-2xl font-bold">
-                        ${mockToken.price.toFixed(6)}
+                        ${token.price.toFixed(6)}
                       </span>
                       <Badge
-                        variant={mockToken.priceChange24h >= 0 ? 'success' : 'destructive'}
+                        variant={token.priceChange24h >= 0 ? 'success' : 'destructive'}
                         className="gap-1"
                       >
-                        {mockToken.priceChange24h >= 0 ? (
+                        {token.priceChange24h >= 0 ? (
                           <TrendingUp className="w-3 h-3" />
                         ) : (
                           <TrendingDown className="w-3 h-3" />
                         )}
-                        {mockToken.priceChange24h.toFixed(2)}%
+                        {token.priceChange24h.toFixed(2)}%
                       </Badge>
                     </div>
                   </div>
@@ -164,15 +258,15 @@ export default function TradePage() {
                 <div className="flex flex-wrap gap-4 sm:gap-6 text-sm">
                   <div className="min-w-[80px]">
                     <p className="text-muted-foreground text-xs sm:text-sm">Market Cap</p>
-                    <p className="font-medium">${formatNumber(mockToken.marketCap)}</p>
+                    <p className="font-medium">${formatNumber(token.marketCap)}</p>
                   </div>
                   <div className="min-w-[80px]">
                     <p className="text-muted-foreground text-xs sm:text-sm">24h Volume</p>
-                    <p className="font-medium">${formatNumber(mockToken.volume24h)}</p>
+                    <p className="font-medium">${formatNumber(token.volume24h)}</p>
                   </div>
                   <div className="min-w-[80px]">
                     <p className="text-muted-foreground text-xs sm:text-sm">Liquidity</p>
-                    <p className="font-medium">${formatNumber(mockToken.liquidity)}</p>
+                    <p className="font-medium">${formatNumber(token.liquidity)}</p>
                   </div>
                 </div>
               </div>
@@ -276,7 +370,7 @@ export default function TradePage() {
                         className="pr-20 text-lg h-14 bg-muted/50"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <span className="font-medium">{mockToken.symbol}</span>
+                        <span className="font-medium">{token.symbol}</span>
                       </div>
                     </div>
                   </div>
@@ -288,7 +382,7 @@ export default function TradePage() {
                     <div className="flex justify-between text-sm">
                       <Label>You Sell</Label>
                       <span className="text-muted-foreground">
-                        Balance: {formatNumber(tokenBalance)} {mockToken.symbol}
+                        Balance: {formatNumber(tokenBalance)} {token.symbol}
                       </span>
                     </div>
                     <div className="relative">
@@ -300,7 +394,7 @@ export default function TradePage() {
                         className="pr-20 text-lg h-14"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <span className="font-medium">{mockToken.symbol}</span>
+                        <span className="font-medium">{token.symbol}</span>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -373,7 +467,7 @@ export default function TradePage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Rate</span>
-                        <span>1 {mockToken.symbol} = {calculations.rate.toFixed(8)} ETH</span>
+                        <span>1 {token.symbol} = {calculations.rate.toFixed(8)} ETH</span>
                       </div>
 
                       <div className="flex justify-between items-center">
@@ -436,12 +530,12 @@ export default function TradePage() {
                       {activeTab === 'buy' ? (
                         <>
                           <TrendingUp className="w-5 h-5 mr-2" />
-                          Buy {mockToken.symbol}
+                          Buy {token.symbol}
                         </>
                       ) : (
                         <>
                           <TrendingDown className="w-5 h-5 mr-2" />
-                          Sell {mockToken.symbol}
+                          Sell {token.symbol}
                         </>
                       )}
                     </>

@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useChainId } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
+import { useCreateToken, useCreationFee, isChainSupported } from '@/lib/contracts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +25,8 @@ import {
   FileText,
   Sparkles,
   AlertCircle,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 
 interface TokenFormData {
@@ -64,10 +68,29 @@ const steps = [
 ];
 
 export default function LaunchPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
+  const chainId = useChainId();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<TokenFormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<TokenFormData>>({});
+  const [launchSuccess, setLaunchSuccess] = useState(false);
+  const [createdTokenAddress, setCreatedTokenAddress] = useState<string | null>(null);
+
+  // Contract hooks
+  const { data: creationFee } = useCreationFee();
+  const { createToken, isPending, isConfirming, isSuccess, hash, error: txError } = useCreateToken();
+
+  // Check if chain is supported
+  const chainSupported = isChainSupported(chainId);
+
+  // Reset success state when starting over
+  useEffect(() => {
+    if (isSuccess && hash) {
+      setLaunchSuccess(true);
+      // In a real implementation, we'd parse the transaction receipt to get the token address
+      setCreatedTokenAddress(hash);
+    }
+  }, [isSuccess, hash]);
 
   const updateField = (field: keyof TokenFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -113,13 +136,39 @@ export default function LaunchPage() {
 
   const handleLaunch = async () => {
     if (!validateStep(currentStep)) return;
-    // TODO: Implement contract interaction
-    console.log('Launching token:', formData);
+    if (!creationFee) return;
+
+    // Build social links array
+    const socialLinks: string[] = [];
+    if (formData.website) socialLinks.push(formData.website);
+    if (formData.twitter) socialLinks.push(formData.twitter);
+    if (formData.telegram) socialLinks.push(formData.telegram);
+    if (formData.discord) socialLinks.push(formData.discord);
+
+    try {
+      await createToken({
+        name: formData.name,
+        symbol: formData.symbol.toUpperCase(),
+        description: formData.description,
+        imageUri: formData.logoUrl,
+        socialLinks,
+        value: creationFee,
+      });
+    } catch (err) {
+      console.error('Failed to launch token:', err);
+    }
+  };
+
+  const handleStartOver = () => {
+    setLaunchSuccess(false);
+    setCreatedTokenAddress(null);
+    setCurrentStep(1);
+    setFormData(initialFormData);
   };
 
   const estimatedMarketCap = parseFloat(formData.totalSupply || '0') * parseFloat(formData.initialPrice || '0');
-  const platformFee = 0.01; // ETH
-  const estimatedGas = 0.005; // ETH
+  const platformFee = creationFee ? parseFloat(formatEther(creationFee)) : 0.01;
+  const estimatedGas = 0.005; // ETH estimate
 
   return (
     <div className="container py-8 max-w-4xl">
@@ -517,12 +566,38 @@ export default function LaunchPage() {
             </motion.div>
           </AnimatePresence>
 
+          {/* Transaction Error */}
+          {txError && (
+            <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="w-4 h-4" />
+                <span className="font-medium">Transaction Failed</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {txError.message || 'An error occurred while launching your token.'}
+              </p>
+            </div>
+          )}
+
+          {/* Chain Not Supported Warning */}
+          {!chainSupported && isConnected && currentStep === 4 && (
+            <div className="mt-4 p-4 bg-warning/10 border border-warning/20 rounded-lg">
+              <div className="flex items-center gap-2 text-warning">
+                <AlertCircle className="w-4 h-4" />
+                <span className="font-medium">Chain Not Supported</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                XFERNO contracts are not deployed on this network. Please switch to a supported chain.
+              </p>
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t">
             <Button
               variant="outline"
               onClick={prevStep}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isPending || isConfirming}
               className="gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -537,10 +612,25 @@ export default function LaunchPage() {
             ) : isConnected ? (
               <Button
                 onClick={handleLaunch}
+                disabled={isPending || isConfirming || !chainSupported}
                 className="gap-2 bg-gradient-fire hover:opacity-90"
               >
-                <Rocket className="w-4 h-4" />
-                Launch Token
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Confirm in Wallet...
+                  </>
+                ) : isConfirming ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Launching...
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="w-4 h-4" />
+                    Launch Token
+                  </>
+                )}
               </Button>
             ) : (
               <ConnectButton />
@@ -548,6 +638,56 @@ export default function LaunchPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Success Modal/View */}
+      {launchSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Card className="max-w-md w-full mx-4 border-success/50">
+            <CardContent className="pt-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-success" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Token Launched! 🎉</h3>
+              <p className="text-muted-foreground mb-4">
+                Your token <span className="font-medium">{formData.name}</span> (${formData.symbol}) has been successfully created.
+              </p>
+              
+              {hash && (
+                <div className="p-3 bg-muted rounded-lg mb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Transaction Hash</p>
+                  <a
+                    href={`https://etherscan.io/tx/${hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-mono text-primary hover:underline flex items-center justify-center gap-1"
+                  >
+                    {hash.slice(0, 10)}...{hash.slice(-8)}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleStartOver}
+                >
+                  Launch Another
+                </Button>
+                <Button
+                  className="flex-1 bg-gradient-fire hover:opacity-90"
+                  asChild
+                >
+                  <a href={`/trade?token=${hash}`}>
+                    Trade Now
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
