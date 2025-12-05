@@ -11,20 +11,20 @@
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                           XFERNO BUILD PROGRESS                                ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  12%             ║
+║  Overall Progress:  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░  30%             ║
 ║                                                                                ║
-║  Phase 0: Foundation        ████████████████░░░░  70%  [IN PROGRESS]          ║
-║  Phase 1: ETH MVP           ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
-║  Phase 2: Auth & Social     ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
+║  Phase 0: Foundation        ████████████████░░░░  80%  [IN PROGRESS]          ║
+║  Phase 1: ETH + ZKR MVP     ████████████░░░░░░░░  60%  [IN PROGRESS]          ║
+║  Phase 2: Auth, KYC & Social░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 3: BDAG + Adapters   ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 4: Full Multi-Chain  ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 5: Production        ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 
-Last Updated: 2024-12-04
-Current Phase: Phase 0 - Foundation
-Current Step: Step 0.7 Complete - Awaiting pnpm install
-Blockers: Need to restart IDE and run pnpm install
+Last Updated: 2024-12-05
+Current Phase: Phase 0/1 - Foundation & ETH MVP (Partial)
+Current Focus: Frontend MVP with basic smart contracts on Sepolia testnet
+Blockers: Backend API, Database, Docker, ZK Rollup not started
 ```
 
 ---
@@ -33,17 +33,53 @@ Blockers: Need to restart IDE and run pnpm install
 
 | Item | Value |
 |------|-------|
-| **Current Phase** | Phase 0 - Foundation |
-| **Current Step** | Step 0.7 Complete |
-| **Next Action** | Restart IDE, run `pnpm install` |
-| **Blockers** | Node.js PATH not in IDE terminal |
-| **Last Completed** | Shared Types Package |
+| **Current Phase** | Phase 0/1 Partial |
+| **Frontend** | Basic MVP functional |
+| **Smart Contracts** | Basic contracts on Sepolia |
+| **Backend API** | ❌ NOT STARTED |
+| **Database** | ❌ NOT STARTED |
+| **ZK Rollup** | ❌ NOT STARTED |
+| **Next Action** | Backend API scaffold |
+| **Last Completed** | Frontend Polish (Phase 6-style) |
+
+---
+
+## 🔥 What's Actually Built
+
+### Frontend (apps/web) ✅
+- Next.js 14 with App Router
+- TailwindCSS + shadcn/ui
+- Wagmi v2 + RainbowKit wallet connection
+- Token launch wizard (4-step form)
+- Trading interface (buy/sell)
+- Token discovery page
+- Token detail pages
+- Toast notifications & error handling
+- Mobile responsive design
+
+### Smart Contracts (Sepolia Testnet) ✅
+- TokenFactory: `0x9c78920aAF6f7686438613b05d5921155f989884`
+- BondingCurve: `0xf0354A6E8491D05886a6216dB713b4133f391e3c`
+- XfernoToken template (ERC-20)
+
+### NOT Built Yet ❌
+- NestJS Backend API
+- PostgreSQL Database (Prisma)
+- Redis Cache
+- Docker Environment
+- CI/CD Pipeline
+- ZK Rollup (circom circuits)
+- Authentication (DIDit)
+- KYC Integration
+- Multi-chain adapters
+- Bridges
+- Admin Panel
 
 ---
 
 # PHASE 0: Foundation & Infrastructure
 
-**Duration:** 2-3 weeks | **Status:** 🟡 IN PROGRESS | **Progress:** 70%
+**Duration:** 2-3 weeks | **Status:** 🟡 IN PROGRESS | **Progress:** 80%
 
 ## Step 0.1: Monorepo Initialization ✅ COMPLETE
 
@@ -51,44 +87,38 @@ Blockers: Need to restart IDE and run pnpm install
 
 | Task | Status | Command/File |
 |------|--------|--------------|
-| Initialize Turborepo | ⬜ | `npx create-turbo@latest` |
-| Configure pnpm workspaces | ⬜ | `pnpm-workspace.yaml` |
-| Create apps/ directories | ⬜ | web, api, extension, pwa |
-| Create packages/ directories | ⬜ | contracts, sdk, types, network-adapters, ui |
+| Initialize Turborepo | ✅ | Turborepo configured |
+| Configure pnpm workspaces | ✅ | `pnpm-workspace.yaml` |
+| Create apps/ directories | ✅ | web ✅, api ⬜, extension ⬜, pwa ⬜ |
+| Create packages/ directories | ✅ | contracts ✅, sdk ⬜, types ⬜, network-adapters ⬜, ui ⬜ |
 | Create infra/ directory | ⬜ | docker, k8s, terraform |
-| Configure turbo.json | ⬜ | Build pipelines |
-| Setup TypeScript config | ⬜ | `tsconfig.base.json` |
-| Setup ESLint + Prettier | ⬜ | `.eslintrc.js`, `.prettierrc` |
-| Create .env.example | ⬜ | All env vars documented |
+| Configure turbo.json | ✅ | Build pipelines |
+| Setup TypeScript config | ✅ | `tsconfig.base.json` |
+| Setup ESLint + Prettier | ✅ | `.eslintrc.js`, `.prettierrc` |
+| Create .env.example | ✅ | Environment vars documented |
 
-**Acceptance:** `pnpm install` and `pnpm build` work
+**Acceptance:** `pnpm install` and `pnpm build` work ✅
 
 ---
 
-## Step 0.2: Next.js Frontend Scaffold ⬜
+## Step 0.2: Next.js Frontend Scaffold ✅ COMPLETE
 
 **Goal:** Next.js 14 + App Router + TailwindCSS v4 + shadcn/ui
 
 | Task | Status | Details |
 |------|--------|---------|
-| Initialize Next.js 14 | ⬜ | App Router, TypeScript |
-| Install TailwindCSS v4 | ⬜ | Latest with CLI |
-| Install shadcn/ui | ⬜ | Button, Input, Card, Dialog |
-| Install Lucide icons | ⬜ | Icon library |
-| Create app/layout.tsx | ⬜ | Root layout |
-| Create app/page.tsx | ⬜ | Landing placeholder |
-| Setup Apple-light theme | ⬜ | CSS variables |
-| Configure path aliases | ⬜ | @/ imports |
-
-**Apple-Light Palette:**
-- Primary: `#007AFF` (iOS Blue)
-- Background: `#FFFFFF`, `#F5F5F7`, `#E8E8ED`
-- Text: `#1D1D1F`, `#86868B`
-- Success: `#34C759` | Warning: `#FF9500` | Error: `#FF3B30`
+| Initialize Next.js 14 | ✅ | App Router, TypeScript |
+| Install TailwindCSS | ✅ | With custom XFERNO theme |
+| Install shadcn/ui | ✅ | Button, Input, Card, Dialog, Tabs, etc. |
+| Install Lucide icons | ✅ | Icon library |
+| Create app/layout.tsx | ✅ | Root layout with providers |
+| Create app/page.tsx | ✅ | Landing page |
+| Setup Dark/Light theme | ✅ | System preference support |
+| Configure path aliases | ✅ | @/ imports |
 
 ---
 
-## Step 0.3: NestJS Backend Scaffold ⬜
+## Step 0.3: NestJS Backend Scaffold ⬜ NOT STARTED
 
 **Goal:** NestJS API with GraphQL, PostgreSQL, Redis
 
@@ -108,7 +138,7 @@ Blockers: Need to restart IDE and run pnpm install
 
 ---
 
-## Step 0.4: Database Schema ⬜
+## Step 0.4: Database Schema ⬜ NOT STARTED
 
 **Goal:** Prisma schema with all core tables
 
@@ -128,7 +158,7 @@ Blockers: Need to restart IDE and run pnpm install
 
 ---
 
-## Step 0.5: Docker Environment ⬜
+## Step 0.5: Docker Environment ⬜ NOT STARTED
 
 **Goal:** docker-compose.dev.yml with full local stack
 
@@ -143,7 +173,7 @@ Blockers: Need to restart IDE and run pnpm install
 
 ---
 
-## Step 0.6: CI/CD Pipeline ⬜
+## Step 0.6: CI/CD Pipeline ⬜ NOT STARTED
 
 **Goal:** GitHub Actions for lint, test, build
 
@@ -155,7 +185,7 @@ Blockers: Need to restart IDE and run pnpm install
 
 ---
 
-## Step 0.7: Shared Types Package ⬜
+## Step 0.7: Shared Types Package ⬜ NOT STARTED
 
 **Goal:** packages/types with all TypeScript definitions
 
@@ -163,7 +193,7 @@ Blockers: Need to restart IDE and run pnpm install
 
 ---
 
-## Step 0.8: Network Adapters Base ⬜
+## Step 0.8: Network Adapters Base ⬜ NOT STARTED
 
 **Goal:** NetworkAdapter interface + registry
 
@@ -179,15 +209,24 @@ interface NetworkAdapter {
 
 ---
 
-## Step 0.9: Smart Contracts Structure ⬜
+## Step 0.9: Smart Contracts Structure ✅ PARTIAL
 
 **Goal:** Foundry setup with directory structure
 
-**Directories:** src/tokens, src/bridges, src/dex, src/zkr, src/presale
+| Task | Status | Details |
+|------|--------|---------|
+| Foundry setup | ✅ | forge, foundry.toml |
+| src/tokens | ✅ | XfernoToken.sol |
+| src/factory | ✅ | TokenFactory.sol |
+| src/curve | ✅ | BondingCurve.sol |
+| src/bridges | ⬜ | Not started |
+| src/dex | ⬜ | Not started |
+| src/zkr | ⬜ | Not started |
+| src/presale | ⬜ | Integrated in BondingCurve |
 
 ---
 
-## Step 0.10: Browser Extension Skeleton ⬜
+## Step 0.10: Browser Extension Skeleton ⬜ NOT STARTED
 
 **Goal:** Chrome extension for .XFERNO resolution
 
@@ -195,7 +234,7 @@ interface NetworkAdapter {
 
 ---
 
-## Step 0.11: PWA Configuration ⬜
+## Step 0.11: PWA Configuration ⬜ NOT STARTED
 
 **Goal:** next-pwa with offline support
 
@@ -203,15 +242,15 @@ interface NetworkAdapter {
 
 ## Phase 0 Checklist
 
-- [ ] 0.1 Monorepo
-- [ ] 0.2 Frontend
+- [x] 0.1 Monorepo (partial - web + contracts only)
+- [x] 0.2 Frontend ✅
 - [ ] 0.3 Backend
 - [ ] 0.4 Database
 - [ ] 0.5 Docker
 - [ ] 0.6 CI/CD
-- [ ] 0.7 Types
-- [ ] 0.8 Adapters
-- [ ] 0.9 Contracts
+- [ ] 0.7 Types Package
+- [ ] 0.8 Network Adapters
+- [x] 0.9 Contracts (partial)
 - [ ] 0.10 Extension
 - [ ] 0.11 PWA
 
@@ -219,10 +258,10 @@ interface NetworkAdapter {
 
 # PHASE 1: ETH + ZKR MVP
 
-**Duration:** 4-6 weeks | **Status:** ⬜ BLOCKED | **Progress:** 0%  
+**Duration:** 4-6 weeks | **Status:** 🟡 IN PROGRESS | **Progress:** 60%  
 **Dependencies:** Phase 0 complete
 
-## Step 1.1: ZK Rollup Core ⬜
+## Step 1.1: ZK Rollup Core ⬜ NOT STARTED
 
 | Task | Status |
 |------|--------|
@@ -233,27 +272,31 @@ interface NetworkAdapter {
 | Create prover service | ⬜ |
 | Create verifier contract | ⬜ |
 
-## Step 1.2: Token Factory Contracts ⬜
+## Step 1.2: Token Factory Contracts ✅ COMPLETE
 
 | Task | Status |
 |------|--------|
-| Base ERC-20 template | ⬜ |
+| Base ERC-20 template | ✅ XfernoToken.sol |
 | ZK-enabled token | ⬜ |
-| Standard L1 token | ⬜ |
-| Token factory | ⬜ |
+| Standard L1 token | ✅ |
+| Token factory | ✅ TokenFactory.sol |
 | Mint/burn for bridges | ⬜ |
 
-## Step 1.3: Presale Contract ⬜
+**Deployed (Sepolia):**
+- TokenFactory: `0x9c78920aAF6f7686438613b05d5921155f989884`
+- BondingCurve: `0xf0354A6E8491D05886a6216dB713b4133f391e3c`
+
+## Step 1.3: Presale Contract ✅ COMPLETE (BondingCurve)
 
 | Task | Status |
 |------|--------|
-| Bonding curve math | ⬜ |
-| Buy/sell functions | ⬜ |
-| Graduation trigger | ⬜ |
-| Emergency withdrawal | ⬜ |
-| Fee collection | ⬜ |
+| Bonding curve math | ✅ Linear curve |
+| Buy/sell functions | ✅ |
+| Graduation trigger | ✅ 6.9 ETH threshold |
+| Emergency withdrawal | ✅ Pause/unpause |
+| Fee collection | ✅ 1% platform fee |
 
-## Step 1.4: Graduation Engine ⬜
+## Step 1.4: Graduation Engine ⬜ NOT STARTED
 
 | Task | Status |
 |------|--------|
@@ -264,45 +307,46 @@ interface NetworkAdapter {
 | LP seeding | ⬜ |
 | Rollback logic | ⬜ |
 
-## Step 1.5: Launch Wizard Frontend ⬜
+## Step 1.5: Launch Wizard Frontend ✅ COMPLETE
 
 | Step | Status |
 |------|--------|
-| Token basics | ⬜ |
-| Launch mode selection | ⬜ |
-| Network selection | ⬜ |
+| Token basics | ✅ Name, symbol, description |
+| Launch mode selection | ⬜ (hardcoded to L1 single) |
+| Network selection | ⬜ (hardcoded to Sepolia) |
 | Graduation config | ⬜ |
 | Governance options | ⬜ |
-| Review & confirm | ⬜ |
+| Review & confirm | ✅ |
 
-## Step 1.6: Presale Trading UI ⬜
-
-| Task | Status |
-|------|--------|
-| Token page layout | ⬜ |
-| Bonding curve chart | ⬜ |
-| Buy/sell form | ⬜ |
-| Graduation progress bar | ⬜ |
-| Wallet connection | ⬜ |
-
-## Step 1.7: Token Discovery ⬜
+## Step 1.6: Presale Trading UI ✅ COMPLETE
 
 | Task | Status |
 |------|--------|
-| Token list page | ⬜ |
-| Filters & sorting | ⬜ |
-| Search | ⬜ |
-| Token cards | ⬜ |
+| Token page layout | ✅ |
+| Bonding curve chart | ✅ Placeholder |
+| Buy/sell form | ✅ |
+| Graduation progress bar | ✅ |
+| Wallet connection | ✅ RainbowKit |
+
+## Step 1.7: Token Discovery ✅ COMPLETE
+
+| Task | Status |
+|------|--------|
+| Token list page | ✅ |
+| Filters & sorting | ✅ |
+| Search | ✅ |
+| Token cards | ✅ |
+| Token detail page | ✅ |
 
 ## Phase 1 Checklist
 
 - [ ] 1.1 ZK Rollup
-- [ ] 1.2 Token Contracts
-- [ ] 1.3 Presale Contract
+- [x] 1.2 Token Contracts ✅
+- [x] 1.3 Presale Contract ✅
 - [ ] 1.4 Graduation Engine
-- [ ] 1.5 Launch Wizard
-- [ ] 1.6 Trading UI
-- [ ] 1.7 Discovery
+- [x] 1.5 Launch Wizard ✅ (basic)
+- [x] 1.6 Trading UI ✅
+- [x] 1.7 Discovery ✅
 
 ---
 
@@ -526,6 +570,37 @@ interface NetworkAdapter {
 
 ---
 
+# FRONTEND COMPONENTS BUILT (Reference)
+
+## UI Components (apps/web/src/components/ui/)
+- badge.tsx, button.tsx, card.tsx, dialog.tsx
+- dropdown-menu.tsx, input.tsx, label.tsx
+- skeleton.tsx, slider.tsx, sonner.tsx (toasts)
+- spinner.tsx, tabs.tsx, textarea.tsx
+- error-boundary.tsx, empty-state.tsx
+- copy-button.tsx, price-display.tsx
+
+## Feature Components
+- **Wallet:** connect-button.tsx, network-status.tsx, token-balances.tsx
+- **Trading:** chart.tsx, order-book.tsx, recent-trades.tsx, token-selector.tsx
+- **Tokens:** token-card.tsx, token-list.tsx, creator-tokens.tsx, featured-tokens.tsx
+- **Transactions:** tx-status.tsx
+- **Layout:** header.tsx, footer.tsx
+
+## Pages (apps/web/src/app/)
+- `/` - Landing page
+- `/tokens` - Token discovery
+- `/tokens/[address]` - Token detail
+- `/launch` - Token creation wizard
+- `/trade` - Trading interface
+- `/docs` - Documentation (placeholder)
+
+## Hooks (apps/web/src/lib/)
+- **contracts/**: addresses.ts, abis.ts, hooks.ts, events.ts
+- **hooks/**: use-toast.ts
+
+---
+
 # APPENDIX A: Token Launch Modes Reference
 
 | Mode | Base Chain | Split Networks | ZK Integration |
@@ -535,24 +610,26 @@ interface NetworkAdapter {
 | L1 Single-Chain | ETH or BDAG | None | None |
 | L1 Split Multi-Chain | ETH or BDAG | 1+ from list | L1 Bridges |
 
+**Currently Implemented:** L1 Single-Chain (Sepolia only)
+
 ---
 
 # APPENDIX B: Supported Networks
 
-| Network | Type | Base? | Split? | Wave |
-|---------|------|-------|--------|------|
-| Ethereum | EVM | ✅ | ✅ | 1 |
-| BDAG | EVM | ✅ | ✅ | 1 |
-| Arbitrum | EVM L2 | ❌ | ✅ | 1 |
-| Base | EVM L2 | ❌ | ✅ | 1 |
-| BNB Chain | EVM | ❌ | ✅ | 1 |
-| Polygon | EVM | ❌ | ✅ | 1 |
-| Avalanche | EVM | ❌ | ✅ | 1 |
-| Solana | SPL | ❌ | ✅ | 1 |
-| zkSync | EVM L2 | ❌ | ✅ | 2 |
-| Linea | EVM L2 | ❌ | ✅ | 2 |
-| Sui | Move | ❌ | ✅ | 3 |
-| Aptos | Move | ❌ | ✅ | 3 |
+| Network | Type | Base? | Split? | Wave | Status |
+|---------|------|-------|--------|------|--------|
+| Ethereum | EVM | ✅ | ✅ | 1 | Sepolia testnet ✅ |
+| BDAG | EVM | ✅ | ✅ | 1 | ⬜ |
+| Arbitrum | EVM L2 | ❌ | ✅ | 1 | ⬜ |
+| Base | EVM L2 | ❌ | ✅ | 1 | Config ready, not deployed |
+| BNB Chain | EVM | ❌ | ✅ | 1 | ⬜ |
+| Polygon | EVM | ❌ | ✅ | 1 | ⬜ |
+| Avalanche | EVM | ❌ | ✅ | 1 | ⬜ |
+| Solana | SPL | ❌ | ✅ | 1 | ⬜ |
+| zkSync | EVM L2 | ❌ | ✅ | 2 | ⬜ |
+| Linea | EVM L2 | ❌ | ✅ | 2 | ⬜ |
+| Sui | Move | ❌ | ✅ | 3 | ⬜ |
+| Aptos | Move | ❌ | ✅ | 3 | ⬜ |
 
 ---
 
@@ -563,7 +640,7 @@ interface NetworkAdapter {
    └─▶ Users buy via bonding curve
    └─▶ raised_amount accumulates
 
-2. GRADUATION_PENDING (target reached)
+2. GRADUATION_PENDING (target reached - 6.9 ETH)
    └─▶ Graduation Engine triggered
 
 3. GRADUATED_DEPLOYING
@@ -578,6 +655,8 @@ interface NetworkAdapter {
    └─▶ Multi-chain analytics
 ```
 
+**Current Status:** Steps 1-2 implemented in BondingCurve.sol (graduation trigger exists, but no automatic deployment)
+
 ---
 
 # CHANGELOG
@@ -585,6 +664,24 @@ interface NetworkAdapter {
 | Date | Phase | Step | Change |
 |------|-------|------|--------|
 | 2024-12-04 | - | - | Initial phase_summary.md created |
+| 2024-12-04 | 0 | 0.1-0.2 | Monorepo + Next.js frontend scaffold |
+| 2024-12-04 | 0 | 0.9 | Foundry contracts setup |
+| 2024-12-04 | 1 | 1.2-1.3 | Token Factory + Bonding Curve contracts |
+| 2024-12-04 | 1 | 1.2 | Deployed contracts to Sepolia |
+| 2024-12-04 | 1 | 1.5 | Launch wizard frontend |
+| 2024-12-04 | 1 | 1.6 | Trading UI frontend |
+| 2024-12-05 | 1 | 1.7 | Token discovery + detail pages |
+| 2024-12-05 | - | - | Frontend polish (toasts, errors, empty states) |
+
+---
+
+# IMMEDIATE NEXT STEPS
+
+1. **Backend API** - Initialize NestJS in apps/api
+2. **Database** - Setup Prisma with PostgreSQL
+3. **Docker** - Create docker-compose.dev.yml
+4. **Graduation Engine** - Implement DEX pool creation
+5. **Multi-chain** - Deploy to Base Sepolia
 
 ---
 
