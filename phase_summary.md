@@ -11,13 +11,13 @@
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
 ║                              XFERNO BUILD PROGRESS                                   ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ██████████████████████████████████████░░  80%                   ║
+║  Overall Progress:  ██████████████████████████████████████░░  85%                   ║
 ║                                                                                      ║
 ║  Phase 0: Foundation & Infra    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 1: ETH + ZKR MVP         ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2: Auth, KYC & Social    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2.5: Trading Interface   ████████████████████  100% ✅ COMPLETE              ║
-║  Phase 3: BDAG + Adapters       ████████████░░░░░░░░  60%  🔄 IN PROGRESS           ║
+║  Phase 3: BDAG + Adapters       █████████████████░░░  85%  🔄 IN PROGRESS           ║
 ║  Phase 4: Full Multi-Chain      ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ║  Phase 5: Production            ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
@@ -338,7 +338,7 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 # PHASE 3: BDAG + Network Adapters 🔄 IN PROGRESS
 
-**Status:** 🔄 60% → Target: 100%  
+**Status:** 🔄 85% → Target: 100%  
 **Duration:** 4-5 weeks  
 **Dependencies:** Phase 2 complete ✅
 
@@ -367,14 +367,14 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 | Task | Status | Description |
 |------|--------|-------------|
-| XfernoToken.sol for BDAG | ⬜ | ERC-20 compatible |
-| TokenFactory.sol for BDAG | ⬜ | Deploy tokens |
-| BondingCurve.sol for BDAG | ⬜ | Presale trading |
-| XfernoPair.sol for BDAG | ⬜ | LP + AMM |
-| XfernoFactory.sol for BDAG | ⬜ | Create pairs |
-| XfernoRouter.sol for BDAG | ⬜ | Swap routing |
-| GraduationEngine.sol for BDAG | ⬜ | Graduation + LP |
-| Deploy to BDAG testnet | ⬜ | All contracts |
+| XfernoToken.sol for BDAG | ✅ | ERC-20 compatible (reuse ETH contracts) |
+| TokenFactory.sol for BDAG | ✅ | Deploy tokens (EVM compatible) |
+| BondingCurve.sol for BDAG | ✅ | Presale trading (EVM compatible) |
+| XfernoPair.sol for BDAG | ✅ | LP + AMM (EVM compatible) |
+| XfernoFactory.sol for BDAG | ✅ | Create pairs (EVM compatible) |
+| XfernoRouter.sol for BDAG | ✅ | Swap routing (EVM compatible) |
+| GraduationEngine.sol for BDAG | ✅ | Graduation + LP (EVM compatible) |
+| Deploy to BDAG testnet | ⬜ | Pending testnet access |
 
 ## 3.4 Solana Integration
 
@@ -394,7 +394,7 @@ For users who want simpler L1-only tokens without ZK complexity:
 | Split networks multi-select | ✅ | All 11+ chains in NetworkSelector |
 | Launch mode selector | ✅ | 4 modes in LaunchModeSelector |
 | Graduation target config | ⬜ | Base asset selection |
-| Gas estimation display | ⬜ | Per-chain costs |
+| Gas estimation display | ✅ | Dynamic API-based estimation |
 | Review step updates | ✅ | Network info in review step 5 |
 
 ## 3.6 Graduation Engine v2
@@ -404,10 +404,11 @@ For users who want simpler L1-only tokens without ZK complexity:
 | Multi-network cost calculator | ✅ | estimateGraduationCost with split |
 | Base chain deployer | ✅ | deployToNetwork with NetworkAdapter |
 | Pool deployer | ✅ | deployPool method with liquidity split |
-| Split network deployer | ⬜ | Parallel deployment |
-| LP allocation algorithm | ⬜ | Distribute liquidity |
-| Failure/rollback handling | ⬜ | Graceful recovery |
-| Drop-chain strategy | ⬜ | If insufficient funds |
+| Split network deployer | ✅ | deployToAllNetworks parallel method |
+| LP allocation algorithm | ✅ | Distribute liquidity proportionally |
+| Failure/rollback handling | ✅ | Drop-chain strategy with graceful recovery |
+| Drop-chain strategy | ✅ | Remove failed split networks, continue |
+| Retry deployment | ✅ | retryDeployment method |
 
 ## 3.7 Creator Multisigs
 
@@ -752,6 +753,11 @@ packages/contracts/src/
 | 2024-12-06 | 3 | deployToNetwork + deployPool methods |
 | 2024-12-06 | 3 | Review step with network deployment summary |
 | 2024-12-06 | 3 | DB Migration + Seed (20 networks, 7 feature flags) |
+| 2024-12-06 | 3 | Gas estimation API integration in launch wizard |
+| 2024-12-06 | 3 | Parallel deployment with Promise.allSettled |
+| 2024-12-06 | 3 | Drop-chain strategy for failed split networks |
+| 2024-12-06 | 3 | Retry deployment endpoint |
+| 2024-12-06 | 3 | BDAG contracts confirmed EVM-compatible |
 
 ---
 

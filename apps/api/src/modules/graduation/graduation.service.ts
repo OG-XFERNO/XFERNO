@@ -497,6 +497,162 @@ export class GraduationService {
   }
 
   /**
+   * Deploy to all networks in parallel with failure handling
+   */
+  async deployToAllNetworks(tokenId: string) {
+    const deployments = await this.prisma.tokenDeployment.findMany({
+      where: { tokenId, status: DeploymentStatus.PENDING },
+      include: { network: true },
+    });
+
+    if (deployments.length === 0) {
+      this.logger.warn(`No pending deployments for token ${tokenId}`);
+      return { success: true, deployments: [] };
+    }
+
+    this.logger.log(`Starting parallel deployment for token ${tokenId} to ${deployments.length} networks`);
+
+    // Deploy to all networks in parallel
+    const results = await Promise.allSettled(
+      deployments.map(async (deployment) => {
+        try {
+          // Deploy token
+          await this.deployToNetwork(tokenId, deployment.networkId);
+          
+          // Deploy pool after token
+          if (deployment.tokenAddress) {
+            await this.deployPool(tokenId, deployment.networkId);
+          }
+          
+          return { networkId: deployment.networkId, success: true };
+        } catch (error) {
+          this.logger.error(`Deployment failed for ${deployment.network.name}:`, error);
+          return { networkId: deployment.networkId, success: false, error };
+        }
+      })
+    );
+
+    // Analyze results
+    const successful = results.filter(
+      (r): r is PromiseFulfilledResult<{ networkId: string; success: true }> =>
+        r.status === 'fulfilled' && r.value.success
+    );
+    const failed = results.filter(
+      (r): r is PromiseFulfilledResult<{ networkId: string; success: false; error: unknown }> =>
+        r.status === 'fulfilled' && !r.value.success
+    );
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+
+    this.logger.log(
+      `Deployment results: ${successful.length} successful, ${failed.length + rejected.length} failed`
+    );
+
+    // If base chain failed, mark graduation as failed
+    const token = await this.prisma.token.findUnique({
+      where: { id: tokenId },
+      select: { baseChainId: true },
+    });
+
+    const baseChainFailed = [...failed, ...rejected].some(
+      (r) => r.status === 'fulfilled' && r.value.networkId === token?.baseChainId
+    );
+
+    if (baseChainFailed) {
+      await this.prisma.token.update({
+        where: { id: tokenId },
+        data: { status: TokenStatus.GRADUATION_FAILED },
+      });
+
+      await this.prisma.graduationLog.updateMany({
+        where: { tokenId, completedAt: null },
+        data: { status: 'FAILED', completedAt: new Date() },
+      });
+
+      return {
+        success: false,
+        error: 'Base chain deployment failed',
+        successful: successful.map((r) => r.value.networkId),
+        failed: [...failed, ...rejected].map((r) =>
+          r.status === 'fulfilled' ? r.value.networkId : 'unknown'
+        ),
+      };
+    }
+
+    // If only split chains failed, apply drop-chain strategy
+    if (failed.length > 0 || rejected.length > 0) {
+      const droppedNetworks = [...failed, ...rejected].map((r) =>
+        r.status === 'fulfilled' ? r.value.networkId : 'unknown'
+      );
+
+      this.logger.warn(`Applying drop-chain strategy. Dropped networks: ${droppedNetworks.join(', ')}`);
+
+      // Update token to remove failed split networks
+      await this.prisma.token.update({
+        where: { id: tokenId },
+        data: {
+          splitNetworkIds: {
+            set: successful
+              .filter((r) => r.value.networkId !== token?.baseChainId)
+              .map((r) => r.value.networkId),
+          },
+        },
+      });
+
+      // Mark failed deployments
+      for (const networkId of droppedNetworks) {
+        if (networkId !== 'unknown') {
+          await this.prisma.tokenDeployment.updateMany({
+            where: { tokenId, networkId },
+            data: { status: DeploymentStatus.FAILED },
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      successful: successful.map((r) => r.value.networkId),
+      failed: [...failed, ...rejected].map((r) =>
+        r.status === 'fulfilled' ? r.value.networkId : 'unknown'
+      ),
+      droppedChains: failed.length + rejected.length,
+    };
+  }
+
+  /**
+   * Retry failed deployment for a specific network
+   */
+  async retryDeployment(tokenId: string, networkId: string) {
+    const deployment = await this.prisma.tokenDeployment.findUnique({
+      where: { tokenId_networkId: { tokenId, networkId } },
+    });
+
+    if (!deployment) {
+      throw new NotFoundException('Deployment not found');
+    }
+
+    if (deployment.status !== DeploymentStatus.FAILED) {
+      throw new BadRequestException('Only failed deployments can be retried');
+    }
+
+    // Reset to pending
+    await this.prisma.tokenDeployment.update({
+      where: { id: deployment.id },
+      data: { status: DeploymentStatus.PENDING },
+    });
+
+    // Retry deployment
+    try {
+      await this.deployToNetwork(tokenId, networkId);
+      await this.deployPool(tokenId, networkId);
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Retry failed for ${networkId}:`, error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  /**
    * Get all tokens pending graduation
    */
   async getPendingGraduations() {

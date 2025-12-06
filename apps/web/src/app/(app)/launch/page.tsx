@@ -212,6 +212,12 @@ export default function LaunchPage() {
   }
   const [errors, setErrors] = useState<Partial<TokenFormData>>({});
   const [launchSuccess, setLaunchSuccess] = useState(false);
+  const [gasEstimate, setGasEstimate] = useState<{
+    baseNetwork: { networkId: string; estimatedCost: string };
+    splitNetworks: { networkId: string; estimatedCost: string }[];
+    totalEstimatedCost: string;
+  } | null>(null);
+  const [isEstimating, setIsEstimating] = useState(false);
 
   // Contract hooks
   const { data: creationFee } = useCreationFee();
@@ -355,7 +361,41 @@ export default function LaunchPage() {
 
   const estimatedMarketCap = parseFloat(formData.totalSupply || '0') * parseFloat(formData.initialPrice || '0');
   const platformFee = creationFee ? parseFloat(formatEther(creationFee)) : 0.001;
-  const estimatedGas = 0.002; // ETH estimate
+  
+  // Calculate gas from API estimate or fallback
+  const estimatedGas = gasEstimate 
+    ? parseFloat(gasEstimate.totalEstimatedCost) / 1e18 
+    : 0.002;
+
+  // Fetch gas estimates when network selection changes
+  useEffect(() => {
+    const fetchGasEstimate = async () => {
+      if (!formData.baseNetwork) return;
+      
+      setIsEstimating(true);
+      try {
+        const splitParams = formData.splitNetworks.join(',');
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/networks/estimate?baseNetwork=${formData.baseNetwork}&splitNetworks=${splitParams}`,
+          { credentials: 'include' }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setGasEstimate(data.data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch gas estimate:', err);
+      } finally {
+        setIsEstimating(false);
+      }
+    };
+
+    // Debounce the fetch
+    const timer = setTimeout(fetchGasEstimate, 500);
+    return () => clearTimeout(timer);
+  }, [formData.baseNetwork, formData.splitNetworks]);
 
   return (
     <div className="container py-8 max-w-4xl">
@@ -807,8 +847,11 @@ export default function LaunchPage() {
                             <span>{platformFee} ETH</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Est. Gas</span>
-                            <span>~{estimatedGas} ETH</span>
+                            <span className="text-muted-foreground">Est. Gas ({formData.splitNetworks.length + 1} chain{formData.splitNetworks.length > 0 ? 's' : ''})</span>
+                            <span className="flex items-center gap-1">
+                              {isEstimating && <Loader2 className="w-3 h-3 animate-spin" />}
+                              ~{estimatedGas.toFixed(4)} ETH
+                            </span>
                           </div>
                           <div className="flex justify-between font-medium border-t pt-2 mt-2">
                             <span>Total</span>
