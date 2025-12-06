@@ -17,29 +17,6 @@ const timeframes = [
   { label: '1D', value: '1440' },
 ];
 
-// Generate mock candlestick data (fallback when no real data)
-function generateMockData(count: number = 100, basePrice: number = 0.0001): CandlestickData[] {
-  const data: CandlestickData[] = [];
-  let price = basePrice;
-  const now = Math.floor(Date.now() / 1000);
-  const interval = 60 * 5; // 5 minutes
-
-  for (let i = count; i >= 0; i--) {
-    const time = (now - i * interval) as Time;
-    const volatility = 0.02;
-    const change = (Math.random() - 0.5) * volatility;
-    const open = price;
-    const close = price * (1 + change);
-    const high = Math.max(open, close) * (1 + Math.random() * 0.01);
-    const low = Math.min(open, close) * (1 - Math.random() * 0.01);
-
-    data.push({ time, open, high, low, close });
-    price = close;
-  }
-
-  return data;
-}
-
 // Convert API candles to chart format
 function apiCandlesToChartData(candles: PriceCandle[]): CandlestickData[] {
   return candles.map((c) => ({
@@ -69,14 +46,13 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
   const interval = intervalToApiFormat(selectedTimeframe);
   const { data: apiCandles, isLoading } = usePriceCandles(tokenAddress, chainId, interval);
 
-  // Convert API data or use mock data
+  // Convert API data - no more mock fallback
   const chartData = useMemo(() => {
     if (apiCandles && apiCandles.length > 0) {
       return apiCandlesToChartData(apiCandles);
     }
-    // Fall back to mock data with current price as base
-    return generateMockData(100, currentPrice || 0.0001);
-  }, [apiCandles, currentPrice]);
+    return []; // Empty array - no mock data
+  }, [apiCandles]);
 
   const hasRealData = apiCandles && apiCandles.length > 0;
 
@@ -253,7 +229,20 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
       </div>
 
       {/* Chart Container */}
-      <div ref={chartContainerRef} className="w-full h-[400px]" />
+      <div className="relative">
+        <div ref={chartContainerRef} className="w-full h-[400px]" />
+        
+        {/* Empty state overlay */}
+        {!isLoading && !hasRealData && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="text-muted-foreground text-center">
+              <div className="text-4xl mb-2">📊</div>
+              <p className="text-sm font-medium">No Trading Data Yet</p>
+              <p className="text-xs mt-1">Chart will populate after the first trade</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

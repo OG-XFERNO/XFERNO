@@ -23,29 +23,6 @@ interface RecentTradesProps {
   tokenAddress?: string;
 }
 
-// Generate mock recent trades (fallback)
-function generateMockTrades(count: number = 20, basePrice: number = 0.00042): Trade[] {
-  const trades: Trade[] = [];
-  const now = Date.now();
-
-  for (let i = 0; i < count; i++) {
-    const type = Math.random() > 0.5 ? 'buy' : 'sell';
-    const price = basePrice * (1 + (Math.random() - 0.5) * 0.02);
-    const amount = Math.random() * 30000 + 1000;
-
-    trades.push({
-      id: `trade-${i}`,
-      type,
-      price,
-      amount,
-      total: price * amount,
-      time: new Date(now - i * 30000 - Math.random() * 30000),
-    });
-  }
-
-  return trades;
-}
-
 // Convert API trades to display format
 function apiTradesToDisplay(apiTrades: ApiTrade[]): Trade[] {
   return apiTrades.map((t) => ({
@@ -68,12 +45,12 @@ export function RecentTrades({ tokenAddress }: RecentTradesProps) {
   // Real-time WebSocket updates
   const { isConnected, lastTrade } = useTradeSocket(tokenAddress, chainId);
 
-  // Convert API trades or use mock data
+  // Convert API trades - no mock fallback
   const trades = useMemo(() => {
     if (apiTrades && apiTrades.length > 0) {
       return apiTradesToDisplay(apiTrades);
     }
-    return generateMockTrades(20);
+    return []; // Empty - no mock data
   }, [apiTrades]);
 
   const hasRealData = apiTrades && apiTrades.length > 0;
@@ -130,30 +107,42 @@ export function RecentTrades({ tokenAddress }: RecentTradesProps) {
 
         {/* Trades List */}
         <div className="max-h-[340px] overflow-y-auto">
-          {trades.map((trade) => (
-            <div
-              key={trade.id}
-              className="grid grid-cols-4 text-xs px-4 py-1.5 hover:bg-muted/30 transition-colors"
-            >
-              <span className={trade.type === 'buy' ? 'text-success' : 'text-destructive'}>
-                <span className="inline-flex items-center gap-1">
-                  {trade.type === 'buy' ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  {formatPrice(trade.price)}
-                </span>
-              </span>
-              <span className="text-right">{formatAmount(trade.amount)}</span>
-              <span className="text-right text-muted-foreground">
-                {trade.total.toFixed(4)}
-              </span>
-              <span className="text-right text-muted-foreground">
-                {formatTime(trade.time)}
-              </span>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ))}
+          ) : trades.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <div className="text-3xl mb-2">📈</div>
+              <p className="text-sm font-medium">No Trades Yet</p>
+              <p className="text-xs mt-1">Be the first to trade!</p>
+            </div>
+          ) : (
+            trades.map((trade) => (
+              <div
+                key={trade.id}
+                className="grid grid-cols-4 text-xs px-4 py-1.5 hover:bg-muted/30 transition-colors"
+              >
+                <span className={trade.type === 'buy' ? 'text-success' : 'text-destructive'}>
+                  <span className="inline-flex items-center gap-1">
+                    {trade.type === 'buy' ? (
+                      <TrendingUp className="w-3 h-3" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3" />
+                    )}
+                    {formatPrice(trade.price)}
+                  </span>
+                </span>
+                <span className="text-right">{formatAmount(trade.amount)}</span>
+                <span className="text-right text-muted-foreground">
+                  {trade.total.toFixed(4)}
+                </span>
+                <span className="text-right text-muted-foreground">
+                  {formatTime(trade.time)}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>

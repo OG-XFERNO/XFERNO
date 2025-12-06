@@ -497,7 +497,7 @@ export default function TradePage() {
 
           {/* Order Book & Recent Trades */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <OrderBook tokenAddress={tokenAddress} />
+            <OrderBook tokenAddress={tokenAddress} currentPrice={token.price} />
             <RecentTrades tokenAddress={tokenAddress} />
           </div>
         </div>

@@ -1,137 +1,77 @@
 'use client';
 
-import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { Info } from 'lucide-react';
-
-interface OrderBookEntry {
-  price: number;
-  amount: number;
-  total: number;
-}
 
 interface OrderBookProps {
   tokenAddress?: string;
+  currentPrice?: number;
 }
 
-// Generate mock order book data (simulated liquidity depth for AMM)
-function generateMockOrderBook(basePrice: number = 0.00042): { bids: OrderBookEntry[]; asks: OrderBookEntry[] } {
-  const bids: OrderBookEntry[] = [];
-  const asks: OrderBookEntry[] = [];
-
-  let bidTotal = 0;
-  let askTotal = 0;
-
-  for (let i = 0; i < 10; i++) {
-    const bidAmount = Math.random() * 50000 + 10000;
-    const askAmount = Math.random() * 50000 + 10000;
-    bidTotal += bidAmount;
-    askTotal += askAmount;
-
-    bids.push({
-      price: basePrice * (1 - (i + 1) * 0.001),
-      amount: bidAmount,
-      total: bidTotal,
-    });
-
-    asks.push({
-      price: basePrice * (1 + (i + 1) * 0.001),
-      amount: askAmount,
-      total: askTotal,
-    });
-  }
-
-  return { bids, asks: asks.reverse() };
-}
-
-export function OrderBook({ tokenAddress }: OrderBookProps) {
-  // Note: AMMs don't have traditional order books - this shows simulated liquidity depth
-  const { bids, asks } = useMemo(() => generateMockOrderBook(), []);
-
-  const maxTotal = Math.max(
-    Math.max(...bids.map((b) => b.total)),
-    Math.max(...asks.map((a) => a.total))
-  );
-
-  const formatPrice = (price: number) => price.toFixed(8);
-  const formatAmount = (amount: number) => {
-    if (amount >= 1000) return `${(amount / 1000).toFixed(1)}K`;
-    return amount.toFixed(0);
-  };
+export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
+  // AMMs don't have traditional order books - show bonding curve info instead
+  const hasToken = !!tokenAddress;
 
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-1">
-            Liquidity Depth
-            <span className="text-muted-foreground" title="AMM liquidity visualization">
+            Bonding Curve
+            <span className="text-muted-foreground" title="AMM uses bonding curve pricing">
               <Info className="w-3 h-3" />
             </span>
           </CardTitle>
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
-            Simulated
-          </span>
+          {hasToken && (
+            <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+              AMM
+            </span>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        {/* Header */}
-        <div className="grid grid-cols-3 text-xs text-muted-foreground px-4 py-2 border-b border-border/50">
-          <span>Price (ETH)</span>
-          <span className="text-right">Amount</span>
-          <span className="text-right">Total</span>
-        </div>
-
-        {/* Asks (Sell orders) */}
-        <div className="max-h-[150px] overflow-y-auto">
-          {asks.map((ask, i) => (
-            <div
-              key={`ask-${i}`}
-              className="relative grid grid-cols-3 text-xs px-4 py-1 hover:bg-muted/30"
-            >
-              <div
-                className="absolute inset-0 bg-destructive/10"
-                style={{ width: `${(ask.total / maxTotal) * 100}%`, right: 0, left: 'auto' }}
-              />
-              <span className="relative text-destructive">{formatPrice(ask.price)}</span>
-              <span className="relative text-right">{formatAmount(ask.amount)}</span>
-              <span className="relative text-right text-muted-foreground">
-                {formatAmount(ask.total)}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Spread */}
-        <div className="px-4 py-2 border-y border-border/50 bg-muted/30">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Spread</span>
-            <span className="font-medium text-gradient-fire">
-              {((asks[asks.length - 1]?.price - bids[0]?.price) / bids[0]?.price * 100).toFixed(2)}%
-            </span>
+      <CardContent className="p-4">
+        {!hasToken ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <div className="text-3xl mb-2">📉</div>
+            <p className="text-sm font-medium">No Token Selected</p>
+            <p className="text-xs mt-1">Select a token to view pricing</p>
           </div>
-        </div>
-
-        {/* Bids (Buy orders) */}
-        <div className="max-h-[150px] overflow-y-auto">
-          {bids.map((bid, i) => (
-            <div
-              key={`bid-${i}`}
-              className="relative grid grid-cols-3 text-xs px-4 py-1 hover:bg-muted/30"
-            >
-              <div
-                className="absolute inset-0 bg-success/10"
-                style={{ width: `${(bid.total / maxTotal) * 100}%`, right: 0, left: 'auto' }}
-              />
-              <span className="relative text-success">{formatPrice(bid.price)}</span>
-              <span className="relative text-right">{formatAmount(bid.amount)}</span>
-              <span className="relative text-right text-muted-foreground">
-                {formatAmount(bid.total)}
-              </span>
+        ) : (
+          <div className="space-y-4">
+            {/* Bonding Curve Info */}
+            <div className="text-center py-4 border border-border/50 rounded-lg bg-muted/20">
+              <p className="text-xs text-muted-foreground mb-1">Current Price</p>
+              <p className="text-2xl font-bold text-gradient-fire">
+                {currentPrice ? `${currentPrice.toFixed(8)} ETH` : '---'}
+              </p>
             </div>
-          ))}
-        </div>
+
+            {/* Curve Explanation */}
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center py-2 border-b border-border/30">
+                <span className="text-muted-foreground">Pricing Model</span>
+                <span className="font-medium">Bonding Curve</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border/30">
+                <span className="text-muted-foreground">Buy Price Impact</span>
+                <span className="text-success">Price increases ↑</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border/30">
+                <span className="text-muted-foreground">Sell Price Impact</span>
+                <span className="text-destructive">Price decreases ↓</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-muted-foreground">Slippage</span>
+                <span className="font-medium">Variable (size dependent)</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              Prices are determined algorithmically by the bonding curve. 
+              Larger trades have more price impact.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
