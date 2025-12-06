@@ -374,7 +374,7 @@ For users who want simpler L1-only tokens without ZK complexity:
 | XfernoFactory.sol for BDAG | ✅ | Create pairs (EVM compatible) |
 | XfernoRouter.sol for BDAG | ✅ | Swap routing (EVM compatible) |
 | GraduationEngine.sol for BDAG | ✅ | Graduation + LP (EVM compatible) |
-| Deploy to BDAG testnet | ⬜ | deploy-bdag.sh script ready |
+| Deploy to BDAG testnet | ⏸️ | BLOCKED: Network doesn't support Cancun EVM yet |
 
 ## 3.4 Solana Integration
 
@@ -765,6 +765,7 @@ packages/contracts/src/
 | 2024-12-06 | 3 | SolanaAdapter with real SPL token deployment |
 | 2024-12-06 | 3 | deploy-bdag.sh script for Awakening Testnet |
 | 2024-12-06 | 3 | bdag-1043.json deployment config |
+| 2024-12-06 | 3 | BDAG deploy BLOCKED - no Cancun EVM support (mcopy) |
 
 ---
 

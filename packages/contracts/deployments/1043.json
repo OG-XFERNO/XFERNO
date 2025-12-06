@@ -1,0 +1,8 @@
+{
+  "chainId": 1043,
+  "bondingCurve": "0x85ca2cA1109534763f6926243a6f4A51132E03e6",
+  "tokenFactory": "0xAd536C718b63883943ab86348726E10637Fb9869",
+  "creationFee": "1000000000000000",
+  "graduationThreshold": "69000000000000000000",
+  "feeBps": 100
+}

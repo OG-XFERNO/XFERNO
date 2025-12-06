@@ -6,6 +6,8 @@
   "nativeToken": "BDAG",
   "deployedAt": null,
   "deployer": null,
+  "status": "BLOCKED - Network does not support Cancun EVM (mcopy opcode)",
+  "blockedSince": "2024-12-06",
   "contracts": {
     "BondingCurve": {
       "address": null,
