@@ -11,13 +11,13 @@
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
 ║                              XFERNO BUILD PROGRESS                                   ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ████████████████████████████████████░░░░  70%                   ║
+║  Overall Progress:  ██████████████████████████████████████░░  80%                   ║
 ║                                                                                      ║
 ║  Phase 0: Foundation & Infra    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 1: ETH + ZKR MVP         ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2: Auth, KYC & Social    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2.5: Trading Interface   ████████████████████  100% ✅ COMPLETE              ║
-║  Phase 3: BDAG + Adapters       ██████░░░░░░░░░░░░░░  30%  🔄 IN PROGRESS           ║
+║  Phase 3: BDAG + Adapters       ████████████░░░░░░░░  60%  🔄 IN PROGRESS           ║
 ║  Phase 4: Full Multi-Chain      ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ║  Phase 5: Production            ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
@@ -338,7 +338,7 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 # PHASE 3: BDAG + Network Adapters 🔄 IN PROGRESS
 
-**Status:** 🔄 30% → Target: 100%  
+**Status:** 🔄 60% → Target: 100%  
 **Duration:** 4-5 weeks  
 **Dependencies:** Phase 2 complete ✅
 
@@ -395,14 +395,15 @@ For users who want simpler L1-only tokens without ZK complexity:
 | Launch mode selector | ✅ | 4 modes in LaunchModeSelector |
 | Graduation target config | ⬜ | Base asset selection |
 | Gas estimation display | ⬜ | Per-chain costs |
-| Review step updates | ⬜ | Show all selections |
+| Review step updates | ✅ | Network info in review step 5 |
 
 ## 3.6 Graduation Engine v2
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Multi-network cost calculator | ⬜ | Gas for all chains |
-| Base chain deployer | ⬜ | ETH, BDAG, or Solana |
+| Multi-network cost calculator | ✅ | estimateGraduationCost with split |
+| Base chain deployer | ✅ | deployToNetwork with NetworkAdapter |
+| Pool deployer | ✅ | deployPool method with liquidity split |
 | Split network deployer | ⬜ | Parallel deployment |
 | LP allocation algorithm | ⬜ | Distribute liquidity |
 | Failure/rollback handling | ⬜ | Graceful recovery |
@@ -746,6 +747,10 @@ packages/contracts/src/
 | 2024-12-06 | 3 | SolanaAdapter skeleton |
 | 2024-12-06 | 3 | NetworksService + NetworksController |
 | 2024-12-06 | 3 | Frontend NetworkSelector with BDAG + Solana + all splits |
+| 2024-12-06 | 3 | Launch Wizard 5-step flow with network selection |
+| 2024-12-06 | 3 | Graduation Engine v2 with NetworkAdapter integration |
+| 2024-12-06 | 3 | deployToNetwork + deployPool methods |
+| 2024-12-06 | 3 | Review step with network deployment summary |
 
 ---
 
@@ -754,11 +759,12 @@ packages/contracts/src/
 1. ✅ ~~Update Network Schema~~ - Custom IDs + seed data complete
 2. ✅ ~~Create NetworkAdapter Interface~~ - Full interface in place
 3. ✅ ~~Implement EVMAdapter~~ - Base class with ethers.js
-4. **Deploy BDAG Contracts** - Full contract suite to BDAG testnet
-5. **Full SolanaAdapter** - Complete SPL token + Raydium integration
-6. **Integrate Network Selection in Launch Page** - Wire up selectors
-7. **Update Graduation Engine v2** - Multi-network deployment support
+4. ✅ ~~Launch Wizard Integration~~ - 5-step flow with network selection
+5. ✅ ~~Graduation Engine v2~~ - NetworkAdapter-based deployment
+6. **Deploy BDAG Contracts** - Full contract suite to BDAG testnet
+7. **Full SolanaAdapter** - Complete SPL token + Raydium integration
 8. **Run DB Migration + Seed** - Populate networks table
+9. **End-to-End Testing** - Test full launch flow with testnet
 
 ---
 
