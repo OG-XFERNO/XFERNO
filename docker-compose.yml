@@ -82,7 +82,7 @@ services:
         condition: service_healthy
     networks:
       - xferno-network
-    command: sh -c "/app/node_modules/.bin/prisma migrate deploy --schema=/app/apps/api/prisma/schema.prisma && cd /app/apps/api && /app/node_modules/.bin/nest start --watch"
+    command: sh -c "/app/node_modules/.bin/prisma migrate deploy --schema=/app/apps/api/prisma/schema.prisma && /app/node_modules/.bin/prisma generate --schema=/app/apps/api/prisma/schema.prisma && cd /app/apps/api && /app/node_modules/.bin/nest start --watch"
     working_dir: /app/apps/api
 
   web:
