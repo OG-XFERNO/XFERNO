@@ -89,6 +89,7 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3002}
+      NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID:-}
       WATCHPACK_POLLING: "true"
     ports:
       - "${WEB_PORT:-3000}:3000"

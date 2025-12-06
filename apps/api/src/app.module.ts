@@ -14,6 +14,7 @@ import { HealthModule } from './health/health.module';
 
 // Feature modules
 import { AuthModule } from './modules/auth/auth.module';
+import { KycModule } from './modules/kyc/kyc.module';
 import { LaunchModule } from './modules/launch/launch.module';
 import { TradingModule } from './modules/trading/trading.module';
 import { GraduationModule } from './modules/graduation/graduation.module';
@@ -72,6 +73,7 @@ import { IndexerModule } from './modules/indexer/indexer.module';
 
     // Features
     AuthModule,
+    KycModule,
     LaunchModule,
     TradingModule,
     GraduationModule,

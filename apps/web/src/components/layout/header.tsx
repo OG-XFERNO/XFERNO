@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ConnectButton } from '@/components/wallet/connect-button';
 import { NetworkStatus } from '@/components/wallet/network-status';
+import { UserMenu } from '@/components/auth/user-menu';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           <NetworkStatus />
           <ConnectButton />
+          <UserMenu />
         </div>
 
         {/* Mobile Menu Button */}

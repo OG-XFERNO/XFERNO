@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { useState, type ReactNode } from 'react';
 import { config } from '@/lib/wagmi';
+import { AuthProvider } from '@/lib/auth';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -32,7 +33,9 @@ export function Providers({ children }: ProvidersProps) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
