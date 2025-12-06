@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,19 +9,22 @@ import { Label } from '@/components/ui/label';
 import { 
   CheckCircle,
   AlertCircle,
-  Wallet
+  Wallet,
+  Loader2
 } from 'lucide-react';
 
-// Network configuration
+// Network configuration - Extended for BDAG, Solana, and all split networks
 export interface NetworkConfig {
   id: string;
   name: string;
-  chainId: number;
+  chainId: number | null;
   icon: string;
   color: string;
+  type: 'EVM' | 'SOLANA' | 'MOVE' | 'OTHER';
   isTestnet: boolean;
   isMainnet: boolean;
-  supported: boolean;
+  isEnabledForBase: boolean;
+  isEnabledForSplit: boolean;
   comingSoon?: boolean;
   nativeCurrency: {
     name: string;
@@ -30,96 +33,233 @@ export interface NetworkConfig {
   };
 }
 
+// Default networks - will be overridden by API data
 export const networks: NetworkConfig[] = [
+  // ======== BASE NETWORKS ========
   {
-    id: 'ethereum',
+    id: 'ETH_MAINNET',
     name: 'Ethereum',
     chainId: 1,
     icon: '⟠',
     color: '#627EEA',
+    type: 'EVM',
     isTestnet: false,
     isMainnet: true,
-    supported: true,
+    isEnabledForBase: true,
+    isEnabledForSplit: true,
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   },
   {
-    id: 'sepolia',
-    name: 'Sepolia',
+    id: 'ETH_SEPOLIA',
+    name: 'Ethereum Sepolia',
     chainId: 11155111,
     icon: '⟠',
     color: '#627EEA',
+    type: 'EVM',
     isTestnet: true,
     isMainnet: false,
-    supported: true,
+    isEnabledForBase: true,
+    isEnabledForSplit: true,
     nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
   },
   {
-    id: 'arbitrum',
+    id: 'BDAG_MAINNET',
+    name: 'BlockDAG',
+    chainId: 1337,
+    icon: '🔷',
+    color: '#00D4FF',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: true,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'BDAG', symbol: 'BDAG', decimals: 18 },
+  },
+  {
+    id: 'BDAG_TESTNET',
+    name: 'BlockDAG Testnet',
+    chainId: 1338,
+    icon: '🔷',
+    color: '#00D4FF',
+    type: 'EVM',
+    isTestnet: true,
+    isMainnet: false,
+    isEnabledForBase: true,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'BDAG', symbol: 'BDAG', decimals: 18 },
+  },
+  {
+    id: 'SOLANA_MAINNET',
+    name: 'Solana',
+    chainId: null,
+    icon: '◎',
+    color: '#9945FF',
+    type: 'SOLANA',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: true,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'Solana', symbol: 'SOL', decimals: 9 },
+  },
+  {
+    id: 'SOLANA_DEVNET',
+    name: 'Solana Devnet',
+    chainId: null,
+    icon: '◎',
+    color: '#9945FF',
+    type: 'SOLANA',
+    isTestnet: true,
+    isMainnet: false,
+    isEnabledForBase: true,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'Solana', symbol: 'SOL', decimals: 9 },
+  },
+  // ======== SPLIT NETWORKS (Wave 1) ========
+  {
+    id: 'ARBITRUM_ONE',
     name: 'Arbitrum One',
     chainId: 42161,
     icon: '🔵',
     color: '#28A0F0',
+    type: 'EVM',
     isTestnet: false,
     isMainnet: true,
-    supported: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   },
   {
-    id: 'optimism',
-    name: 'Optimism',
-    chainId: 10,
-    icon: '🔴',
-    color: '#FF0420',
-    isTestnet: false,
-    isMainnet: true,
-    supported: true,
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  },
-  {
-    id: 'base',
+    id: 'BASE_MAINNET',
     name: 'Base',
     chainId: 8453,
     icon: '🔵',
     color: '#0052FF',
+    type: 'EVM',
     isTestnet: false,
     isMainnet: true,
-    supported: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   },
   {
-    id: 'polygon',
-    name: 'Polygon',
-    chainId: 137,
-    icon: '💜',
-    color: '#8247E5',
+    id: 'OPTIMISM_MAINNET',
+    name: 'Optimism',
+    chainId: 10,
+    icon: '🔴',
+    color: '#FF0420',
+    type: 'EVM',
     isTestnet: false,
     isMainnet: true,
-    supported: true,
-    nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   },
   {
-    id: 'bnb',
+    id: 'BNB_MAINNET',
     name: 'BNB Chain',
     chainId: 56,
     icon: '🟡',
     color: '#F0B90B',
+    type: 'EVM',
     isTestnet: false,
     isMainnet: true,
-    supported: false,
-    comingSoon: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
     nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
   },
   {
-    id: 'avalanche',
+    id: 'POLYGON_MAINNET',
+    name: 'Polygon',
+    chainId: 137,
+    icon: '💜',
+    color: '#8247E5',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+  },
+  {
+    id: 'AVALANCHE_MAINNET',
     name: 'Avalanche',
     chainId: 43114,
     icon: '🔺',
     color: '#E84142',
+    type: 'EVM',
     isTestnet: false,
     isMainnet: true,
-    supported: false,
-    comingSoon: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
     nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 },
+  },
+  // ======== SPLIT NETWORKS (Wave 2) ========
+  {
+    id: 'ZKSYNC_MAINNET',
+    name: 'zkSync Era',
+    chainId: 324,
+    icon: '⚡',
+    color: '#8C8DFC',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  },
+  {
+    id: 'LINEA_MAINNET',
+    name: 'Linea',
+    chainId: 59144,
+    icon: '➰',
+    color: '#61DFFF',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  },
+  {
+    id: 'SEI_MAINNET',
+    name: 'Sei',
+    chainId: 1329,
+    icon: '🌊',
+    color: '#9B1C1C',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: true,
+    nativeCurrency: { name: 'SEI', symbol: 'SEI', decimals: 18 },
+  },
+  {
+    id: 'HYPER_EVM',
+    name: 'Hyper EVM',
+    chainId: 999,
+    icon: '🚀',
+    color: '#00FF00',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: false,
+    comingSoon: true,
+    nativeCurrency: { name: 'HYPE', symbol: 'HYPE', decimals: 18 },
+  },
+  {
+    id: 'MONAD_MAINNET',
+    name: 'Monad',
+    chainId: null,
+    icon: '🟣',
+    color: '#7B3FE4',
+    type: 'EVM',
+    isTestnet: false,
+    isMainnet: true,
+    isEnabledForBase: false,
+    isEnabledForSplit: false,
+    comingSoon: true,
+    nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
   },
 ];
 
@@ -182,9 +322,9 @@ export function NetworkSelector({
               'relative p-3 cursor-pointer transition-all duration-200',
               'hover:border-primary/50',
               selectedNetwork === network.id && 'border-primary bg-primary/5',
-              (!network.supported || network.comingSoon) && 'opacity-60 cursor-not-allowed'
+              (!network.isEnabledForBase || network.comingSoon) && 'opacity-60 cursor-not-allowed'
             )}
-            onClick={() => network.supported && !network.comingSoon && handleSingleSelect(network.id)}
+            onClick={() => network.isEnabledForBase && !network.comingSoon && handleSingleSelect(network.id)}
           >
             {selectedNetwork === network.id && (
               <div className="absolute top-2 right-2">
@@ -226,7 +366,7 @@ export function NetworkSelector({
           </Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {filteredNetworks
-              .filter((n) => n.supported && !n.comingSoon)
+              .filter((n) => n.isEnabledForBase && !n.comingSoon)
               .map((network) => (
                 <Card
                   key={network.id}
@@ -267,7 +407,7 @@ export function NetworkSelector({
                 className={cn(
                   'p-3 transition-all duration-200',
                   selectedNetworks.includes(network.id) && 'border-primary/50 bg-primary/5',
-                  (!network.supported || network.comingSoon) && 'opacity-60'
+                  (!network.isEnabledForSplit || network.comingSoon) && 'opacity-60'
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -275,10 +415,10 @@ export function NetworkSelector({
                     id={`network-${network.id}`}
                     checked={selectedNetworks.includes(network.id)}
                     onCheckedChange={(checked: boolean | 'indeterminate') => 
-                      network.supported && !network.comingSoon && 
+                      network.isEnabledForSplit && !network.comingSoon && 
                       handleMultiSelect(network.id, checked === true)
                     }
-                    disabled={!network.supported || network.comingSoon}
+                    disabled={!network.isEnabledForSplit || network.comingSoon}
                   />
                   <Label 
                     htmlFor={`network-${network.id}`}

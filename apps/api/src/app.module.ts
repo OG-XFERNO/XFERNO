@@ -25,6 +25,7 @@ import { ZKModule } from './modules/zk/zk.module';
 import { IndexerModule } from './modules/indexer/indexer.module';
 import { SocialModule } from './modules/social/social.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NetworksModule } from './modules/networks/networks.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     IndexerModule,
     SocialModule,
     NotificationsModule,
+    NetworksModule,
   ],
 })
 export class AppModule {}

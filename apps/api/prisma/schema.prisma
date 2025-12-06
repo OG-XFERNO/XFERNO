@@ -77,7 +77,7 @@ enum AccountType {
 // ============== MODELS ==============
 
 model Network {
-  id                   String            @id @default(uuid())
+  id                   String            @id // Custom IDs like ETH_MAINNET, BDAG_MAINNET
   name                 String            @unique
   chainId              Int?
   type                 NetworkType
