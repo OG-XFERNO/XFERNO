@@ -87,19 +87,21 @@ export async function fetchTokenStats(
 }
 
 // React Query hooks
-export function useRecentTrades(tokenAddress: string | undefined, chainId: number) {
+export function useRecentTrades(tokenAddress: string | undefined, chainId: number, limit = 20) {
   return useQuery({
     queryKey: ['trades', tokenAddress, chainId],
-    queryFn: () => fetchRecentTrades(tokenAddress!, chainId),
+    queryFn: () => fetchRecentTrades(tokenAddress!, chainId, limit),
     enabled: !!tokenAddress,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 2000, // Refetch every 2 seconds for responsive updates
+    refetchIntervalInBackground: false,
   });
 }
 
 export function usePriceCandles(
   tokenAddress: string | undefined,
   chainId: number,
-  interval: string
+  interval: string,
+  options?: { refetchInterval?: number; refetchIntervalInBackground?: boolean }
 ) {
   const now = new Date();
   const from = new Date(now.getTime() - getIntervalDuration(interval));
@@ -108,7 +110,8 @@ export function usePriceCandles(
     queryKey: ['candles', tokenAddress, chainId, interval],
     queryFn: () => fetchPriceCandles(tokenAddress!, chainId, interval, from, now),
     enabled: !!tokenAddress,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: options?.refetchInterval ?? 1000, // Default 1 second polling
+    refetchIntervalInBackground: options?.refetchIntervalInBackground ?? false,
   });
 }
 
@@ -117,7 +120,8 @@ export function useTokenStats(tokenAddress: string | undefined, chainId: number)
     queryKey: ['tokenStats', tokenAddress, chainId],
     queryFn: () => fetchTokenStats(tokenAddress!, chainId),
     enabled: !!tokenAddress,
-    refetchInterval: 15000, // Refetch every 15 seconds
+    refetchInterval: 3000, // Refetch every 3 seconds for responsive stats
+    refetchIntervalInBackground: false,
   });
 }
 

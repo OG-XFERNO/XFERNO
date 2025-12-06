@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickData, Time, ISeriesApi, SeriesType } from 'lightweight-charts';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, ISeriesApi } from 'lightweight-charts';
 import { useChainId } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -38,26 +38,24 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const isChartInitialized = useRef(false);
+  const lastDataHash = useRef<string>('');
   const [selectedTimeframe, setSelectedTimeframe] = useState('5');
   const [chartType, setChartType] = useState<'candles' | 'line'>('candles');
   const chainId = useChainId();
 
-  // Fetch real candle data from API
+  // Fetch real candle data from API with 1-second polling
   const interval = intervalToApiFormat(selectedTimeframe);
-  const { data: apiCandles, isLoading } = usePriceCandles(tokenAddress, chainId, interval);
-
-  // Convert API data - no more mock fallback
-  const chartData = useMemo(() => {
-    if (apiCandles && apiCandles.length > 0) {
-      return apiCandlesToChartData(apiCandles);
-    }
-    return []; // Empty array - no mock data
-  }, [apiCandles]);
+  const { data: apiCandles, isLoading } = usePriceCandles(tokenAddress, chainId, interval, {
+    refetchInterval: 1000, // Poll every 1 second
+    refetchIntervalInBackground: false, // Don't poll when tab is hidden
+  });
 
   const hasRealData = apiCandles && apiCandles.length > 0;
 
+  // Initialize chart only once
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || isChartInitialized.current) return;
 
     // Chart configuration matching XFERNO theme
     const chart = createChart(chartContainerRef.current, {
@@ -121,9 +119,6 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
 
     candleSeriesRef.current = candlestickSeries;
 
-    // Set data from API or mock
-    candlestickSeries.setData(chartData);
-
     // Add volume series
     const volumeSeries = chart.addHistogramSeries({
       color: '#f5af19',
@@ -142,22 +137,12 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
       },
     });
 
-    // Generate volume data from candles
-    const volumeData = chartData.map((candle) => ({
-      time: candle.time,
-      value: hasRealData ? (apiCandles?.find(c => c.time === (candle.time as number))?.volume || 1000) : Math.random() * 10000 + 1000,
-      color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-    }));
-
-    volumeSeries.setData(volumeData);
-
-    // Fit content
-    chart.timeScale().fitContent();
+    isChartInitialized.current = true;
 
     // Handle resize
     const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
           height: 400,
         });
@@ -170,8 +155,53 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      isChartInitialized.current = false;
+      lastDataHash.current = '';
     };
-  }, [selectedTimeframe, chartData, hasRealData, apiCandles]);
+  }, []);
+
+  // Update data without recreating chart (smooth updates)
+  useEffect(() => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current || !apiCandles) return;
+
+    // Create a hash to check if data actually changed
+    const dataHash = JSON.stringify(apiCandles.map(c => `${c.time}-${c.close}`));
+    if (dataHash === lastDataHash.current) return; // Skip if no change
+    lastDataHash.current = dataHash;
+
+    const chartData = apiCandlesToChartData(apiCandles);
+    
+    // Update candlestick data
+    candleSeriesRef.current.setData(chartData);
+
+    // Update volume data
+    const volumeData = chartData.map((candle) => ({
+      time: candle.time,
+      value: apiCandles?.find(c => c.time === (candle.time as number))?.volume || 1000,
+      color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+    }));
+
+    volumeSeriesRef.current.setData(volumeData);
+
+    // Only fit content on first data load
+    if (chartRef.current && chartData.length > 0) {
+      chartRef.current.timeScale().fitContent();
+    }
+  }, [apiCandles]);
+
+  // Handle timeframe change - reset chart data
+  useEffect(() => {
+    if (candleSeriesRef.current) {
+      candleSeriesRef.current.setData([]);
+    }
+    if (volumeSeriesRef.current) {
+      volumeSeriesRef.current.setData([]);
+    }
+    lastDataHash.current = ''; // Reset hash to allow new data
+  }, [selectedTimeframe]);
 
   return (
     <div className="w-full">
