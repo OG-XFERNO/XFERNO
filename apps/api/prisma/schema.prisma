@@ -469,3 +469,83 @@ model PriceAlert {
   @@index([tokenAddress])
   @@index([triggered])
 }
+
+// ============== 2FA MODELS ==============
+
+model TwoFactorRecoveryCode {
+  id        String   @id @default(uuid())
+  userId    String
+  code      String   // hashed recovery code
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============== SOCIAL MODELS ==============
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   // user who is following
+  followingId String   // user being followed
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model TokenFollow {
+  id           String   @id @default(uuid())
+  userId       String
+  tokenAddress String
+  chainId      Int
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, tokenAddress, chainId])
+  @@index([userId])
+  @@index([tokenAddress])
+}
+
+model Comment {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenAddress String
+  chainId      Int
+  content      String
+  parentId     String?   // for replies
+  isEdited     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  replies Comment[] @relation("CommentReplies")
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenAddress, chainId])
+  @@index([parentId])
+}
+
+model CommentLike {
+  id        String   @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+}
+
+model Activity {
+  id           String   @id @default(uuid())
+  userId       String
+  type         String   // 'TRADE' | 'COMMENT' | 'FOLLOW' | 'TOKEN_FOLLOW' | 'TOKEN_LAUNCH'
+  targetType   String?  // 'USER' | 'TOKEN' | 'COMMENT'
+  targetId     String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}

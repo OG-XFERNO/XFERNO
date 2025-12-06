@@ -23,6 +23,7 @@ import { BridgeModule } from './modules/bridge/bridge.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ZKModule } from './modules/zk/zk.module';
 import { IndexerModule } from './modules/indexer/indexer.module';
+import { SocialModule } from './modules/social/social.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { IndexerModule } from './modules/indexer/indexer.module';
     AdminModule,
     ZKModule,
     IndexerModule,
+    SocialModule,
   ],
 })
 export class AppModule {}

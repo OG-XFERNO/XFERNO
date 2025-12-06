@@ -646,4 +646,43 @@ export class AuthService {
     // For now, accept any signature for development
     return signature.length > 0 && message.includes('XFERNO');
   }
+
+  /**
+   * Generate access token after successful 2FA verification
+   */
+  async generateTokenAfter2FA(userId: string): Promise<AuthResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { wallets: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email || undefined,
+      role: user.role,
+      accountType: user.accountType,
+      emailVerified: user.emailVerified,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email || undefined,
+        username: user.username || undefined,
+        displayName: user.displayName || undefined,
+        avatarUrl: user.avatarUrl || undefined,
+        role: user.role,
+        accountType: user.accountType,
+        emailVerified: user.emailVerified,
+        kycStatus: user.kycStatus,
+      },
+    };
+  }
 }

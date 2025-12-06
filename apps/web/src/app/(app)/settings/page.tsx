@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { TwoFactorSettings } from '@/components/settings/two-factor-settings';
 import { Settings, Bell, Shield, Palette, LogOut } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -76,29 +77,23 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Security */}
+      {/* Security - 2FA */}
+      <div className="mb-6">
+        <TwoFactorSettings />
+      </div>
+
+      {/* Additional Security */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Security
+            Additional Security
           </CardTitle>
           <CardDescription>
-            Manage your account security settings.
+            Additional security preferences.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Two-Factor Authentication</Label>
-              <p className="text-sm text-muted-foreground">
-                Add an extra layer of security to your account.
-              </p>
-            </div>
-            <Button variant="outline" size="sm">
-              {user?.twoFactorEnabled ? 'Disable' : 'Enable'}
-            </Button>
-          </div>
           <div className="flex items-center justify-between">
             <div>
               <Label>Session Timeout</Label>
