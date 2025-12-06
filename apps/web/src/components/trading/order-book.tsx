@@ -1,9 +1,12 @@
 'use client';
 
 import { useChainId } from 'wagmi';
+import { formatEther } from 'viem';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Info, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { Info, TrendingUp, TrendingDown, Loader2, Rocket, Trophy } from 'lucide-react';
 import { useTokenStats } from '@/lib/api/trading';
+import { useTokenState, useCurveParams } from '@/lib/contracts';
+import { Progress } from '@/components/ui/progress';
 
 interface OrderBookProps {
   tokenAddress?: string;
@@ -14,8 +17,26 @@ export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
   const chainId = useChainId();
   const { data: stats, isLoading } = useTokenStats(tokenAddress, chainId);
   
+  // Get bonding curve data from contract
+  const { data: tokenState } = useTokenState(tokenAddress as `0x${string}` | undefined);
+  const { data: curveParams } = useCurveParams();
+  
   const hasToken = !!tokenAddress;
   const hasStats = !!stats;
+
+  // Calculate bonding progress
+  const ethReserve = tokenState?.ethReserve ? BigInt(tokenState.ethReserve.toString()) : BigInt(0);
+  const graduationThreshold = curveParams?.graduationThreshold 
+    ? BigInt(curveParams.graduationThreshold.toString()) 
+    : BigInt('6900000000000000000'); // Default 6.9 ETH
+  
+  const bondingProgress = graduationThreshold > 0 
+    ? Math.min(100, Number((ethReserve * BigInt(100)) / graduationThreshold))
+    : 0;
+  
+  const ethReserveFormatted = parseFloat(formatEther(ethReserve));
+  const graduationThresholdFormatted = parseFloat(formatEther(graduationThreshold));
+  const isGraduated = tokenState?.graduated || false;
 
   // Format price for display - show full decimals, not scientific notation
   const formatPrice = (price: number | string | undefined) => {
@@ -106,6 +127,51 @@ export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
                 <p className="text-muted-foreground">All-Time Low</p>
                 <p className="font-medium mt-1 text-destructive">{formatPrice(stats?.allTimeLow)} ETH</p>
               </div>
+            </div>
+
+            {/* Bonding Progress */}
+            <div className="py-4 px-3 border border-border/50 rounded-lg bg-gradient-to-r from-orange-500/5 to-yellow-500/5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {isGraduated ? (
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                  ) : (
+                    <Rocket className="w-4 h-4 text-orange-500" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {isGraduated ? 'Graduated!' : 'Bonding Progress'}
+                  </span>
+                </div>
+                <span className="text-sm font-bold text-gradient-fire">
+                  {bondingProgress.toFixed(1)}%
+                </span>
+              </div>
+              
+              <Progress 
+                value={bondingProgress} 
+                className="h-3 bg-muted/50"
+                indicatorClassName={isGraduated 
+                  ? 'bg-gradient-to-r from-yellow-500 to-green-500' 
+                  : 'bg-gradient-fire'
+                }
+              />
+              
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{ethReserveFormatted.toFixed(4)} ETH</span>
+                <span>Goal: {graduationThresholdFormatted} ETH</span>
+              </div>
+              
+              {!isGraduated && bondingProgress >= 90 && (
+                <p className="text-xs text-center mt-2 text-yellow-500 font-medium animate-pulse">
+                  🚀 Almost there! Ready to graduate soon!
+                </p>
+              )}
+              
+              {isGraduated && (
+                <p className="text-xs text-center mt-2 text-green-500 font-medium">
+                  ✨ Token has graduated to DEX liquidity!
+                </p>
+              )}
             </div>
 
             {/* Total Volume */}
