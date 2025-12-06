@@ -4,7 +4,20 @@
 # Prerequisites:
 # 1. Install Foundry: curl -L https://foundry.paradigm.xyz | bash && foundryup
 # 2. Get testnet BDAG from https://blockdag.network/testnet
-# 3. Set environment variables below
+# 3. Add BDAG_DEPLOYER_PRIVATE_KEY to your root .env file
+
+# ==================== LOAD ROOT .ENV ====================
+
+# Navigate to project root and load .env
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    echo "Loading environment from $PROJECT_ROOT/.env"
+    export $(grep -v '^#' "$PROJECT_ROOT/.env" | xargs)
+else
+    echo "Warning: No .env file found at $PROJECT_ROOT/.env"
+fi
 
 # ==================== CONFIGURATION ====================
 
@@ -13,8 +26,7 @@ export BDAG_RPC_URL="https://relay.awakening.bdagscan.com"
 export BDAG_CHAIN_ID=1043
 export BDAG_EXPLORER_URL="https://awakening.bdagscan.com"
 
-# Your deployer private key (WITHOUT 0x prefix)
-# IMPORTANT: Never commit this! Use environment variable or .env file
+# Your deployer private key (loaded from root .env)
 export PRIVATE_KEY="${BDAG_DEPLOYER_PRIVATE_KEY}"
 
 # Fee recipient address (defaults to deployer if not set)
