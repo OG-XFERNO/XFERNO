@@ -5,15 +5,30 @@ import { mainnet, base, arbitrum, optimism, polygon, bsc, avalanche, sepolia } f
 import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
 
 // WalletConnect Project ID - should be in env
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo';
+// Get a free project ID at https://cloud.walletconnect.com/
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const hasValidProjectId = projectId && projectId !== 'demo' && projectId.length > 10;
+
+// Build connectors - only include WalletConnect if we have a valid project ID
+const connectors = [
+  injected(),
+  coinbaseWallet({ appName: 'XFERNO' }),
+  // Only add WalletConnect if we have a valid project ID
+  ...(hasValidProjectId ? [walletConnect({ projectId })] : []),
+];
+
+// Log warning in development if no WalletConnect project ID
+if (typeof window !== 'undefined' && !hasValidProjectId) {
+  console.warn(
+    '[XFERNO] WalletConnect disabled - no valid project ID. ' +
+    'Get a free one at https://cloud.walletconnect.com/ and add ' +
+    'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID to your .env.local file.'
+  );
+}
 
 export const config = createConfig({
   chains: [mainnet, base, arbitrum, optimism, polygon, bsc, avalanche, sepolia],
-  connectors: [
-    injected(),
-    walletConnect({ projectId }),
-    coinbaseWallet({ appName: 'XFERNO' }),
-  ],
+  connectors,
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),

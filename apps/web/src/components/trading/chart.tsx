@@ -65,14 +65,22 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Clean up existing chart
-    if (chartRef.current) {
-      chartRef.current.remove();
+    // Clean up existing chart safely
+    const cleanupChart = () => {
+      try {
+        if (chartRef.current) {
+          chartRef.current.remove();
+        }
+      } catch (e) {
+        // Chart already disposed, ignore
+      }
       chartRef.current = null;
       candleSeriesRef.current = null;
       lineSeriesRef.current = null;
       volumeSeriesRef.current = null;
-    }
+    };
+
+    cleanupChart();
 
     // Chart configuration matching XFERNO theme
     const chart = createChart(chartContainerRef.current, {
@@ -176,10 +184,7 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-      }
+      cleanupChart();
     };
   }, [chartType]);
 
@@ -192,27 +197,34 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
     if (dataHash === lastDataHash.current) return;
     lastDataHash.current = dataHash;
 
-    // Update the appropriate series
-    if (chartType === 'candles' && candleSeriesRef.current) {
-      const chartData = apiCandlesToChartData(apiCandles);
-      candleSeriesRef.current.setData(chartData);
-    } else if (chartType === 'line' && lineSeriesRef.current) {
-      const lineData = apiCandlesToLineData(apiCandles);
-      lineSeriesRef.current.setData(lineData);
-    }
+    try {
+      // Update the appropriate series
+      if (chartType === 'candles' && candleSeriesRef.current) {
+        const chartData = apiCandlesToChartData(apiCandles);
+        candleSeriesRef.current.setData(chartData);
+      } else if (chartType === 'line' && lineSeriesRef.current) {
+        const lineData = apiCandlesToLineData(apiCandles);
+        lineSeriesRef.current.setData(lineData);
+      }
 
-    // Update volume
-    if (volumeSeriesRef.current) {
-      const volumeData = apiCandles.map((c) => ({
-        time: c.time as Time,
-        value: c.volume || 1000,
-        color: c.close >= c.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-      }));
-      volumeSeriesRef.current.setData(volumeData);
-    }
+      // Update volume
+      if (volumeSeriesRef.current) {
+        const volumeData = apiCandles.map((c) => ({
+          time: c.time as Time,
+          value: c.volume || 1000,
+          color: c.close >= c.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+        }));
+        volumeSeriesRef.current.setData(volumeData);
+      }
 
-    // Fit content
-    chartRef.current.timeScale().fitContent();
+      // Fit content
+      if (chartRef.current) {
+        chartRef.current.timeScale().fitContent();
+      }
+    } catch (e) {
+      // Chart may have been disposed during update, ignore
+      console.debug('Chart update skipped - chart may be disposed');
+    }
   }, [apiCandles, chartType, selectedTimeframe]);
 
   // Handle timeframe change
@@ -220,9 +232,13 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
     setSelectedTimeframe(newTimeframe);
     lastDataHash.current = ''; // Force data reload
     // Clear current data immediately
-    if (candleSeriesRef.current) candleSeriesRef.current.setData([]);
-    if (lineSeriesRef.current) lineSeriesRef.current.setData([]);
-    if (volumeSeriesRef.current) volumeSeriesRef.current.setData([]);
+    try {
+      if (candleSeriesRef.current) candleSeriesRef.current.setData([]);
+      if (lineSeriesRef.current) lineSeriesRef.current.setData([]);
+      if (volumeSeriesRef.current) volumeSeriesRef.current.setData([]);
+    } catch (e) {
+      // Ignore disposal errors
+    }
   };
 
   return (
