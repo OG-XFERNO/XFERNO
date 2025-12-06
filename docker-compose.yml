@@ -66,6 +66,8 @@ services:
       DIDIT_APP_ID: ${DIDIT_APP_ID:-}
       DIDIT_API_KEY: ${DIDIT_API_KEY:-}
       DIDIT_API_URL: ${DIDIT_API_URL:-https://apx.didit.me/v2}
+      DIDIT_WEBHOOK_SECRET: ${DIDIT_WEBHOOK_SECRET:-}
+      DIDIT_WEBHOOK_URL: ${DIDIT_WEBHOOK_URL:-http://localhost:3002/kyc/didit/webhook}
     ports:
       - "${API_PORT:-3002}:3002"
     volumes:

@@ -8,12 +8,19 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Headers,
+  RawBodyRequest,
+  Req,
+  Logger,
 } from '@nestjs/common';
 import { KycService, SubmitKycDto, AdminReviewDto, DiditWebhookPayload } from './kyc.service';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
+import { Request as ExpressRequest } from 'express';
 
 @Controller('kyc')
 export class KycController {
+  private readonly logger = new Logger(KycController.name);
+
   constructor(private readonly kycService: KycService) {}
 
   /**
@@ -24,6 +31,7 @@ export class KycController {
     return {
       ...this.kycService.getKycRequirements(),
       provider: this.kycService.isDiditConfigured() ? 'didit' : 'manual',
+      diditConfigured: this.kycService.isDiditConfigured(),
     };
   }
 
@@ -39,12 +47,35 @@ export class KycController {
 
   /**
    * Didit webhook callback
+   * Receives verification status updates from Didit
    */
   @Post('didit/webhook')
   @HttpCode(HttpStatus.OK)
-  async handleDiditWebhook(@Body() payload: DiditWebhookPayload) {
-    await this.kycService.handleDiditWebhook(payload);
-    return { success: true };
+  async handleDiditWebhook(
+    @Body() payload: DiditWebhookPayload,
+    @Req() req: RawBodyRequest<ExpressRequest>,
+    @Headers('x-didit-signature') signature?: string,
+    @Headers('x-webhook-signature') webhookSignature?: string,
+  ) {
+    this.logger.log(`Didit webhook received: ${JSON.stringify(payload)}`);
+    
+    // Get raw body for signature verification
+    const rawBody = req.rawBody?.toString() || JSON.stringify(payload);
+    
+    // Use either signature header (Didit may use different header names)
+    const sig = signature || webhookSignature;
+    
+    await this.kycService.handleDiditWebhook(payload, rawBody, sig);
+    return { success: true, message: 'Webhook processed' };
+  }
+
+  /**
+   * Get Didit session status (for polling)
+   */
+  @Get('didit/session/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  async getDiditSessionStatus(@Param('sessionId') sessionId: string) {
+    return this.kycService.getDiditSessionStatus(sessionId);
   }
 
   /**
