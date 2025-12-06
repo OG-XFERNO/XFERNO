@@ -1,0 +1,48 @@
+{
+  "network": "BlockDAG Awakening Testnet",
+  "chainId": 1043,
+  "rpcUrl": "https://relay.awakening.bdagscan.com",
+  "explorerUrl": "https://awakening.bdagscan.com",
+  "nativeToken": "BDAG",
+  "deployedAt": null,
+  "deployer": null,
+  "contracts": {
+    "BondingCurve": {
+      "address": null,
+      "txHash": null
+    },
+    "TokenFactory": {
+      "address": null,
+      "txHash": null
+    },
+    "XfernoFactory": {
+      "address": null,
+      "txHash": null
+    },
+    "XfernoRouter": {
+      "address": null,
+      "txHash": null
+    },
+    "GraduationEngine": {
+      "address": null,
+      "txHash": null
+    },
+    "WBDAG": {
+      "address": null,
+      "txHash": null,
+      "note": "Wrapped BDAG for DEX trading"
+    }
+  },
+  "parameters": {
+    "creationFee": "0.001 BDAG",
+    "virtualBDAGReserve": "30 BDAG",
+    "virtualTokenReserve": "1,000,000,000 tokens",
+    "graduationThreshold": "6.9 BDAG",
+    "feeBps": 100
+  },
+  "notes": [
+    "Use deploy-bdag.sh script for deployment",
+    "Get testnet BDAG from https://blockdag.network/testnet",
+    "Verify contracts after deployment on explorer"
+  ]
+}

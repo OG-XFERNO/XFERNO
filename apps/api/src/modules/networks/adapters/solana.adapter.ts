@@ -1,6 +1,24 @@
 import { Logger } from '@nestjs/common';
 import { NetworkType } from '@prisma/client';
 import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  sendAndConfirmTransaction,
+} from '@solana/web3.js';
+import {
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getMint,
+  getAccount,
+} from '@solana/spl-token';
+import {
   INetworkAdapter,
   NetworkConfig,
   GasEstimate,
@@ -17,17 +35,12 @@ import {
 /**
  * Solana Network Adapter
  * Handles SPL token deployments on Solana
- * 
- * NOTE: This is a skeleton implementation. Full implementation requires:
- * - @solana/web3.js
- * - @solana/spl-token
- * - Anchor framework for program interactions
  */
 export class SolanaAdapter implements INetworkAdapter {
   protected readonly logger = new Logger(SolanaAdapter.name);
   protected config: NetworkConfig | null = null;
-  // protected connection: Connection | null = null;
-  // protected wallet: Keypair | null = null;
+  protected connection: Connection | null = null;
+  protected wallet: Keypair | null = null;
 
   public readonly networkId: string;
   public readonly networkType: NetworkType = NetworkType.SOLANA;
@@ -40,48 +53,69 @@ export class SolanaAdapter implements INetworkAdapter {
   async initialize(config: NetworkConfig): Promise<void> {
     this.config = config;
     
-    // TODO: Initialize Solana connection
-    // this.connection = new Connection(config.rpcUrl, 'confirmed');
+    // Initialize Solana connection
+    this.connection = new Connection(config.rpcUrl, 'confirmed');
     
-    // TODO: Initialize wallet from environment
-    // const privateKey = process.env[`${this.networkId}_DEPLOYER_PRIVATE_KEY`];
-    // if (privateKey) {
-    //   this.wallet = Keypair.fromSecretKey(bs58.decode(privateKey));
-    // }
+    // Initialize wallet from environment variable
+    const privateKeyEnv = process.env[`${this.networkId}_DEPLOYER_PRIVATE_KEY`];
+    if (privateKeyEnv) {
+      try {
+        // Support both base58 and JSON array formats
+        let secretKey: Uint8Array;
+        if (privateKeyEnv.startsWith('[')) {
+          secretKey = new Uint8Array(JSON.parse(privateKeyEnv));
+        } else {
+          // Base58 encoded - would need bs58 package
+          // For now, assume JSON array format
+          this.logger.warn('Base58 private key format not supported, use JSON array');
+        }
+        this.wallet = Keypair.fromSecretKey(secretKey);
+        this.logger.log(`Wallet loaded: ${this.wallet.publicKey.toBase58()}`);
+      } catch (err) {
+        this.logger.warn(`Failed to load wallet: ${err}`);
+      }
+    }
 
-    this.logger.log(`SolanaAdapter initialized for ${config.name} (skeleton)`);
-    this.logger.warn('Solana adapter is not fully implemented yet');
+    this.logger.log(`SolanaAdapter initialized for ${config.name}`);
   }
 
   async isConnected(): Promise<boolean> {
-    // TODO: Implement actual connection check
-    // if (!this.connection) return false;
-    // try {
-    //   await this.connection.getLatestBlockhash();
-    //   return true;
-    // } catch {
-    //   return false;
-    // }
-    return false;
+    if (!this.connection) return false;
+    try {
+      await this.connection.getLatestBlockhash();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async getBalance(address: string): Promise<bigint> {
-    // TODO: Implement balance check
-    // if (!this.connection) throw new Error('Connection not initialized');
-    // const pubkey = new PublicKey(address);
-    // const balance = await this.connection.getBalance(pubkey);
-    // return BigInt(balance);
-    throw new Error('Solana adapter not fully implemented');
+    if (!this.connection) throw new Error('Connection not initialized');
+    const pubkey = new PublicKey(address);
+    const balance = await this.connection.getBalance(pubkey);
+    return BigInt(balance);
   }
 
   async getTokenBalance(tokenAddress: string, ownerAddress: string): Promise<bigint> {
-    // TODO: Implement SPL token balance check
-    // const mint = new PublicKey(tokenAddress);
-    // const owner = new PublicKey(ownerAddress);
-    // const tokenAccount = await getAssociatedTokenAddress(mint, owner);
-    // const balance = await this.connection.getTokenAccountBalance(tokenAccount);
-    // return BigInt(balance.value.amount);
-    throw new Error('Solana adapter not fully implemented');
+    if (!this.connection) throw new Error('Connection not initialized');
+    try {
+      const mint = new PublicKey(tokenAddress);
+      const owner = new PublicKey(ownerAddress);
+      
+      // Get associated token account
+      const tokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.connection,
+        this.wallet!, // Payer
+        mint,
+        owner,
+      );
+      
+      const accountInfo = await getAccount(this.connection, tokenAccount.address);
+      return BigInt(accountInfo.amount.toString());
+    } catch (err) {
+      this.logger.warn(`Failed to get token balance: ${err}`);
+      return BigInt(0);
+    }
   }
 
   async estimateDeployToken(params: DeployTokenParams): Promise<GasEstimate> {
@@ -97,14 +131,58 @@ export class SolanaAdapter implements INetworkAdapter {
   }
 
   async deployToken(params: DeployTokenParams): Promise<DeployTokenResult> {
-    // TODO: Implement SPL token deployment
-    // 1. Create mint account
-    // 2. Initialize mint with decimals
-    // 3. Create token metadata (using Metaplex)
-    // 4. Mint initial supply to owner
-    
-    this.logger.log(`Would deploy SPL token: ${params.name} (${params.symbol})`);
-    throw new Error('Solana token deployment not yet implemented');
+    if (!this.connection || !this.wallet) {
+      throw new Error('Solana connection or wallet not initialized');
+    }
+
+    this.logger.log(`Deploying SPL token: ${params.name} (${params.symbol})`);
+
+    try {
+      // 1. Create the mint (SPL token)
+      const mint = await createMint(
+        this.connection,
+        this.wallet, // Payer
+        this.wallet.publicKey, // Mint authority
+        this.wallet.publicKey, // Freeze authority (can be null)
+        params.decimals,
+      );
+
+      this.logger.log(`Mint created: ${mint.toBase58()}`);
+
+      // 2. Create token account for owner and mint initial supply
+      const ownerPubkey = new PublicKey(params.owner);
+      const tokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.connection,
+        this.wallet,
+        mint,
+        ownerPubkey,
+      );
+
+      // 3. Mint initial supply to owner
+      const mintTx = await mintTo(
+        this.connection,
+        this.wallet,
+        mint,
+        tokenAccount.address,
+        this.wallet, // Mint authority
+        params.totalSupply,
+      );
+
+      this.logger.log(`Initial supply minted: ${mintTx}`);
+
+      // Note: Token metadata (name, symbol) requires Metaplex integration
+      // For now, we just create the mint without on-chain metadata
+      // TODO: Add Metaplex metadata creation for full token info
+
+      return {
+        tokenAddress: mint.toBase58(),
+        transactionHash: mintTx,
+        blockNumber: 0, // Solana doesn't use block numbers the same way
+      };
+    } catch (err) {
+      this.logger.error(`Failed to deploy SPL token: ${err}`);
+      throw err;
+    }
   }
 
   async estimateDeployBridge(params: DeployBridgeParams): Promise<GasEstimate> {
