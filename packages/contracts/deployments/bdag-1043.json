@@ -4,18 +4,19 @@
   "rpcUrl": "https://relay.awakening.bdagscan.com",
   "explorerUrl": "https://awakening.bdagscan.com",
   "nativeToken": "BDAG",
-  "deployedAt": null,
-  "deployer": null,
-  "status": "BLOCKED - Network does not support Cancun EVM (mcopy opcode)",
-  "blockedSince": "2024-12-06",
+  "deployedAt": "2024-12-06T15:20:00Z",
+  "deployer": "0xDaD81A6980442c028CA25c658f73e6d1fD0E0Faa",
+  "status": "DEPLOYED",
+  "evmVersion": "paris",
+  "solcVersion": "0.8.19",
   "contracts": {
     "BondingCurve": {
-      "address": null,
-      "txHash": null
+      "address": "0x9F5BC37D202ac19876c39bBfaF8f4bC8bBD223FA",
+      "txHash": "0x22ee7dbf7e1a5cd5a88ade1db268f8b415a29da899aa4a224e75fe1dc9d096d3"
     },
     "TokenFactory": {
-      "address": null,
-      "txHash": null
+      "address": "0x6D013A9805779aE1f8D891485783149112F54D31",
+      "txHash": "0x58932ca76d3ace1e221f474d1acf8b8197c5cb1520377cfe347fb6bea933fb59"
     },
     "XfernoFactory": {
       "address": null,
