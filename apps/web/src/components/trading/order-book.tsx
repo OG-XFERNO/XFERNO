@@ -17,20 +17,35 @@ export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
   const hasToken = !!tokenAddress;
   const hasStats = !!stats;
 
-  // Format price for display
+  // Format price for display - show full decimals, not scientific notation
   const formatPrice = (price: number | string | undefined) => {
     if (!price) return '---';
     const num = typeof price === 'string' ? parseFloat(price) : price;
     if (num === 0) return '---';
-    return num.toExponential(4);
+    // Show up to 12 decimal places, trimming trailing zeros
+    if (num < 0.000001) {
+      return num.toFixed(12).replace(/\.?0+$/, '');
+    } else if (num < 0.001) {
+      return num.toFixed(9).replace(/\.?0+$/, '');
+    } else if (num < 1) {
+      return num.toFixed(6).replace(/\.?0+$/, '');
+    }
+    return num.toFixed(4);
   };
 
-  // Format volume
+  // Format volume - show full ETH value
   const formatVolume = (vol: string | undefined) => {
     if (!vol) return '0';
     const num = parseFloat(vol) / 1e18;
-    if (num < 0.001) return num.toExponential(2);
-    return num.toFixed(4);
+    if (num === 0) return '0';
+    if (num < 0.000001) {
+      return num.toFixed(9).replace(/\.?0+$/, '');
+    } else if (num < 0.001) {
+      return num.toFixed(6).replace(/\.?0+$/, '');
+    } else if (num < 1) {
+      return num.toFixed(4);
+    }
+    return num.toFixed(2);
   };
 
   return (
@@ -63,7 +78,7 @@ export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
             <div className="text-center py-4 border border-border/50 rounded-lg bg-muted/20">
               <p className="text-xs text-muted-foreground mb-1">Current Price</p>
               <p className="text-2xl font-bold text-gradient-fire">
-                {currentPrice ? `${currentPrice.toExponential(4)} ETH` : '---'}
+                {currentPrice ? `${formatPrice(currentPrice)} ETH` : '---'}
               </p>
               {stats?.priceChange24h !== undefined && stats.priceChange24h !== 0 && (
                 <div className={`flex items-center justify-center gap-1 mt-1 text-sm ${stats.priceChange24h >= 0 ? 'text-success' : 'text-destructive'}`}>

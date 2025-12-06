@@ -394,6 +394,19 @@ export default function TradePage() {
     return num.toFixed(decimals);
   };
 
+  // Format ETH price - show full decimals for small values
+  const formatPriceETH = (price: number) => {
+    if (price === 0) return '0';
+    if (price < 0.000001) {
+      return price.toFixed(12).replace(/\.?0+$/, '');
+    } else if (price < 0.001) {
+      return price.toFixed(9).replace(/\.?0+$/, '');
+    } else if (price < 1) {
+      return price.toFixed(6).replace(/\.?0+$/, '');
+    }
+    return price.toFixed(4);
+  };
+
   const txError = buyError || sellError || approveError;
 
   // Prevent hydration mismatch by not rendering until mounted
@@ -456,7 +469,7 @@ export default function TradePage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-2xl font-bold">
-                            {token.price > 0 ? token.price.toExponential(4) : '0'} ETH
+                            {token.price > 0 ? formatPriceETH(token.price) : '0'} ETH
                           </span>
                           {token.priceChange24h !== 0 && (
                             <Badge
@@ -490,7 +503,7 @@ export default function TradePage() {
                     <div className="hidden sm:flex flex-wrap gap-4 sm:gap-6 text-sm">
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">24h Volume</p>
-                        <p className="font-medium">{formatNumber(token.volume24h)} ETH</p>
+                        <p className="font-medium">{formatPriceETH(token.volume24h)} ETH</p>
                       </div>
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Trades</p>
