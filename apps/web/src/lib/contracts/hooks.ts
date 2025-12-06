@@ -317,7 +317,7 @@ export function useSellTokens() {
       abi: bondingCurveAbi,
       functionName: 'sell',
       args: [params.token, params.tokenAmount, params.minEth],
-      gas: BigInt(250000), // Manual gas limit to prevent estimation issues
+      gas: BigInt(350000), // Higher gas limit for sell (includes token burn)
     });
   };
 

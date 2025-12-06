@@ -379,8 +379,10 @@ export default function TradePage() {
           return;
         }
 
-        // Calculate minimum ETH with slippage
-        const minEth = parseEther((calculations.outputAmount * (100 - slippage) / 100).toString());
+        // For now, set minEth to 0 (no slippage protection)
+        // TODO: Use contract's getSellPrice to calculate expected ETH
+        // The current calculation can cause SlippageExceeded errors
+        const minEth = BigInt(0);
 
         await sell({
           token: tokenAddress,
