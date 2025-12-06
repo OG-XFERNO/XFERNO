@@ -1,21 +1,25 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { type Address, formatEther } from 'viem';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, Zap, Crown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Zap, Crown, Lock } from 'lucide-react';
 import { type TokenWithData } from '@/lib/contracts';
 
 interface TokenCardProps {
   token: TokenWithData;
   rank?: number;
   showRank?: boolean;
+  requireAuth?: boolean;
+  onNeedAuth?: () => void;
 }
 
-export function TokenCard({ token, rank, showRank = false }: TokenCardProps) {
+export function TokenCard({ token, rank, showRank = false, requireAuth = false, onNeedAuth }: TokenCardProps) {
+  const router = useRouter();
   const price = token.currentPrice 
     ? Number(formatEther(token.currentPrice)) 
     : 0;
@@ -97,16 +101,40 @@ export function TokenCard({ token, rank, showRank = false }: TokenCardProps) {
 
         {/* Actions */}
         <div className="mt-4 flex gap-2">
-          <Link href={`/tokens/${token.tokenAddress}`} className="flex-1">
-            <Button variant="outline" size="sm" className="w-full">
-              View
-            </Button>
-          </Link>
-          <Link href={`/trade?token=${token.tokenAddress}`} className="flex-1">
-            <Button size="sm" className="w-full bg-gradient-fire hover:opacity-90">
-              Trade
-            </Button>
-          </Link>
+          {requireAuth ? (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => onNeedAuth?.()}
+              >
+                <Lock className="w-3 h-3 mr-1" />
+                View
+              </Button>
+              <Button 
+                size="sm" 
+                className="flex-1 bg-gradient-fire hover:opacity-90"
+                onClick={() => onNeedAuth?.()}
+              >
+                <Lock className="w-3 h-3 mr-1" />
+                Trade
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href={`/tokens/${token.tokenAddress}`} className="flex-1">
+                <Button variant="outline" size="sm" className="w-full">
+                  View
+                </Button>
+              </Link>
+              <Link href={`/trade?token=${token.tokenAddress}`} className="flex-1">
+                <Button size="sm" className="w-full bg-gradient-fire hover:opacity-90">
+                  Trade
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

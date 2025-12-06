@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TokenList, TokenStats, type SortOption } from '@/components/tokens';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { useAuth } from '@/lib/auth';
 import {
   Search,
   TrendingUp,
@@ -14,13 +16,16 @@ import {
   Star,
   Rocket,
   Droplets,
+  LogIn,
 } from 'lucide-react';
 
 type TabValue = 'trending' | 'new' | 'gainers' | 'all';
 
 export default function TokensPage() {
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabValue>('new');
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Map tab to sort option
   const getSortOption = (tab: TabValue): SortOption => {
@@ -35,6 +40,9 @@ export default function TokensPage() {
 
   return (
     <div className="container py-8">
+      {/* Auth Modal */}
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -43,12 +51,22 @@ export default function TokensPage() {
             Discover and trade the hottest tokens on XFERNO
           </p>
         </div>
-        <Link href="/launch">
-          <Button className="bg-gradient-fire hover:opacity-90 gap-2">
-            <Rocket className="h-4 w-4" />
-            Launch Token
+        {isAuthenticated ? (
+          <Link href="/launch">
+            <Button className="bg-gradient-fire hover:opacity-90 gap-2">
+              <Rocket className="h-4 w-4" />
+              Launch Token
+            </Button>
+          </Link>
+        ) : (
+          <Button 
+            className="bg-gradient-fire hover:opacity-90 gap-2"
+            onClick={() => setAuthModalOpen(true)}
+          >
+            <LogIn className="h-4 w-4" />
+            Login to Trade
           </Button>
-        </Link>
+        )}
       </div>
 
       {/* Stats Bar */}
@@ -94,6 +112,8 @@ export default function TokensPage() {
         searchQuery={searchQuery}
         sortBy={getSortOption(activeTab)}
         emptyMessage="No tokens found matching your criteria"
+        requireAuth={!isAuthenticated}
+        onNeedAuth={() => setAuthModalOpen(true)}
       />
     </div>
   );

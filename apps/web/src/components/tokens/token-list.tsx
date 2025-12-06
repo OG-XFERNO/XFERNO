@@ -18,6 +18,8 @@ interface TokenListProps {
   showRefresh?: boolean;
   emptyMessage?: string;
   className?: string;
+  requireAuth?: boolean;
+  onNeedAuth?: () => void;
 }
 
 export function TokenList({
@@ -27,6 +29,8 @@ export function TokenList({
   showRefresh = true,
   emptyMessage = 'No tokens found',
   className = '',
+  requireAuth = false,
+  onNeedAuth,
 }: TokenListProps) {
   const chainId = useChainId();
   const chainSupported = isChainSupported(chainId);
@@ -189,6 +193,8 @@ export function TokenList({
             token={token} 
             rank={index + 1}
             showRank={sortBy === 'trending' || sortBy === 'liquidity'}
+            requireAuth={requireAuth}
+            onNeedAuth={onNeedAuth}
           />
         ))}
       </div>

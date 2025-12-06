@@ -1,14 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Flame, Globe, Zap, Shield, Rocket, TrendingUp } from 'lucide-react';
+import { ArrowRight, Flame, Globe, Zap, Shield, Rocket, TrendingUp, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConnectButton } from '@/components/wallet/connect-button';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { useAuth } from '@/lib/auth';
+import { UserMenu } from '@/components/auth/user-menu';
 
 export default function HomePage() {
+  const { isAuthenticated, user } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Auth Modal */}
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between">
@@ -26,20 +35,22 @@ export default function HomePage() {
             <Link href="/tokens" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Explore
             </Link>
-            <Link href="/launch" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Launch
-            </Link>
             <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Docs
             </Link>
           </nav>
           <div className="flex items-center gap-3">
-            <ConnectButton />
-            <Link href="/launch">
-              <Button size="sm" className="bg-gradient-fire hover:opacity-90">
-                Launch Token
+            {isAuthenticated ? (
+              <UserMenu />
+            ) : (
+              <Button 
+                onClick={() => setAuthModalOpen(true)}
+                className="bg-gradient-fire hover:opacity-90"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Login / Register
               </Button>
-            </Link>
+            )}
           </div>
         </div>
       </header>
@@ -68,12 +79,23 @@ export default function HomePage() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/launch">
-                <Button size="lg" className="bg-gradient-fire hover:opacity-90 text-lg px-8">
-                  Launch Your Token
-                  <ArrowRight className="ml-2 h-5 w-5" />
+              {isAuthenticated ? (
+                <Link href="/launch">
+                  <Button size="lg" className="bg-gradient-fire hover:opacity-90 text-lg px-8">
+                    Launch Your Token
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              ) : (
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-fire hover:opacity-90 text-lg px-8"
+                  onClick={() => setAuthModalOpen(true)}
+                >
+                  <LogIn className="mr-2 h-5 w-5" />
+                  Get Started
                 </Button>
-              </Link>
+              )}
               <Link href="/tokens">
                 <Button size="lg" variant="outline" className="text-lg px-8">
                   Explore Tokens
@@ -218,18 +240,30 @@ export default function HomePage() {
             
             <div className="relative px-8 py-16 md:px-16 md:py-24 text-center text-white">
               <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                Ready to launch your token?
+                {isAuthenticated ? 'Ready to launch your token?' : 'Join the future of token launches'}
               </h2>
               <p className="text-lg md:text-xl opacity-90 mb-8 max-w-2xl mx-auto">
                 Join hundreds of projects that have successfully launched and graduated 
                 to multi-chain presence with XFERNO.
               </p>
-              <Link href="/launch">
-                <Button size="lg" variant="secondary" className="text-lg px-8">
-                  Get Started Now
+              {isAuthenticated ? (
+                <Link href="/launch">
+                  <Button size="lg" variant="secondary" className="text-lg px-8">
+                    Launch Now
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              ) : (
+                <Button 
+                  size="lg" 
+                  variant="secondary" 
+                  className="text-lg px-8"
+                  onClick={() => setAuthModalOpen(true)}
+                >
+                  Create Account
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-              </Link>
+              )}
             </div>
           </div>
         </div>
