@@ -72,6 +72,7 @@ services:
       BREVO_API_KEY: ${BREVO_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@xferno.io}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-XFERNO}
+      EMAIL_LOGO_URL: ${EMAIL_LOGO_URL:-}
       APP_URL: ${APP_URL:-http://localhost:3000}
     ports:
       - "${API_PORT:-3002}:3002"
