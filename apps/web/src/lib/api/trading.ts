@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 const WS_BASE = API_BASE.replace('http', 'ws');
 
 // Types

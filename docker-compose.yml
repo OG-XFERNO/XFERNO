@@ -59,6 +59,9 @@ services:
       REDIS_URL: redis://redis:6379
       CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://web:3000
       NODE_PATH: /app/node_modules
+      # Blockchain RPC URLs
+      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
+      SEPOLIA_WS_URL: ${SEPOLIA_WS_URL:-wss://ethereum-sepolia-rpc.publicnode.com}
     ports:
       - "${API_PORT:-3002}:3002"
     volumes:

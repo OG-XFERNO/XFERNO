@@ -87,14 +87,28 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
     const sepoliaRpcUrl = this.config.get<string>('SEPOLIA_RPC_URL');
     const sepoliaWsUrl = this.config.get<string>('SEPOLIA_WS_URL');
 
+    this.logger.log(`SEPOLIA_RPC_URL: ${sepoliaRpcUrl ? 'configured' : 'NOT SET!'}`);
+    this.logger.log(`SEPOLIA_WS_URL: ${sepoliaWsUrl ? 'configured' : 'not set'}`);
+
     if (sepoliaRpcUrl) {
-      const transport = sepoliaWsUrl ? webSocket(sepoliaWsUrl) : http(sepoliaRpcUrl);
-      const client = createPublicClient({
-        chain: sepolia,
-        transport,
-      });
-      this.clients.set(11155111, client);
-      this.logger.log('Initialized Sepolia client');
+      try {
+        const transport = sepoliaWsUrl ? webSocket(sepoliaWsUrl) : http(sepoliaRpcUrl);
+        const client = createPublicClient({
+          chain: sepolia,
+          transport,
+        });
+        
+        // Test connection
+        const blockNumber = await client.getBlockNumber();
+        this.logger.log(`✅ Sepolia connected! Current block: ${blockNumber}`);
+        
+        this.clients.set(11155111, client);
+        this.logger.log(`Watching BondingCurve at: ${CONTRACTS[11155111].bondingCurve}`);
+      } catch (error) {
+        this.logger.error(`❌ Failed to connect to Sepolia: ${error}`);
+      }
+    } else {
+      this.logger.warn('⚠️ SEPOLIA_RPC_URL not configured - indexer will not run!');
     }
   }
 
@@ -200,11 +214,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
           data: { lastBlockNumber: end },
         });
 
-        if (buyLogs.length > 0 || sellLogs.length > 0) {
-          this.logger.log(
-            `Processed ${buyLogs.length} buys, ${sellLogs.length} sells in blocks ${start}-${end}`,
-          );
-        }
+        this.logger.log(
+          `Blocks ${start}-${end}: ${buyLogs.length} buys, ${sellLogs.length} sells`,
+        );
       } catch (error) {
         this.logger.error(`Error backfilling blocks ${start}-${end}:`, error);
         await this.prisma.indexerState.update({
