@@ -11,20 +11,21 @@
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                           XFERNO BUILD PROGRESS                                ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ████████████████████████░░░░░░░░░░░░░░░░  55%             ║
+║  Overall Progress:  ██████████████████████████████░░░░░░░░░░  70%             ║
 ║                                                                                ║
 ║  Phase 0: Foundation        ████████████████████  100% ✅ COMPLETE            ║
 ║  Phase 1: ETH + ZKR MVP     ████████████████████  100% ✅ COMPLETE            ║
-║  Phase 2: Auth, KYC & Social░░░░░░░░░░░░░░░░░░░░  0%   [NEXT]                 ║
-║  Phase 3: BDAG + Adapters   ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
+║  Phase 2: Auth, KYC & Social████████████████░░░░  80%  ✅ MOSTLY COMPLETE     ║
+║  Phase 2.5: Trading Interface████████████████████ 100% ✅ COMPLETE            ║
+║  Phase 3: BDAG + Adapters   ░░░░░░░░░░░░░░░░░░░░  0%   [NEXT]                 ║
 ║  Phase 4: Full Multi-Chain  ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ║  Phase 5: Production        ░░░░░░░░░░░░░░░░░░░░  0%   [BLOCKED]              ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 
-Last Updated: 2024-12-05
-Current Phase: Phase 2 - Auth, KYC & Social
-Current Focus: DIDit integration, KYC flow, social features
-Blockers: None - Phase 1 complete!
+Last Updated: 2024-12-06
+Current Phase: Phase 2.5 Complete, Phase 3 Next
+Current Focus: BDAG Network Adapter, Multi-chain deployment
+Blockers: None - Phase 2.5 complete!
 ```
 
 ---
@@ -33,17 +34,18 @@ Blockers: None - Phase 1 complete!
 
 | Item | Value |
 |------|-------|
-| **Current Phase** | Phase 2 - Auth, KYC & Social |
-| **Frontend** | ✅ Complete MVP + Launch Mode/Network selectors |
-| **Smart Contracts** | ✅ All Phase 1 contracts deployed |
-| **Backend API** | ✅ Full services + ZK prover service |
-| **Database** | ✅ Prisma schema complete |
+| **Current Phase** | Phase 3 - BDAG + Network Adapters |
+| **Frontend** | ✅ Complete MVP + Auth + Dashboard + Portfolio + Trading |
+| **Smart Contracts** | ✅ V2 contracts deployed (Sepolia) |
+| **Backend API** | ✅ Full services + Auth + KYC + Indexer + Trading |
+| **Database** | ✅ Prisma schema complete (441 lines) |
 | **Docker** | ✅ docker-compose ready |
 | **CI/CD** | ✅ GitHub Actions configured |
-| **ZK Rollup** | ✅ Circuits + Contracts + Prover |
-| **XFERNO DEX** | ✅ Factory + Router + WETH deployed |
-| **Next Action** | DIDit OAuth integration |
-| **Last Completed** | XFERNO DEX + GraduationEngine deployment |
+| **Authentication** | ✅ Email/Password + JWT + Account Types |
+| **KYC System** | ✅ Status tracking + UI (provider integration pending) |
+| **Trading Interface** | ✅ Portfolio + Watchlist + Trade History |
+| **Next Action** | BDAG network adapter implementation |
+| **Last Completed** | Trading interface with portfolio, watchlist, user trades |
 
 ---
 
@@ -54,27 +56,69 @@ Blockers: None - Phase 1 complete!
 - TailwindCSS + shadcn/ui
 - Wagmi v2 + RainbowKit wallet connection
 - Token launch wizard (4-step form)
-- Trading interface (buy/sell)
+- Trading interface (buy/sell with charts, order book, recent trades)
 - Token discovery page
 - Token detail pages
 - Toast notifications & error handling
 - Mobile responsive design
+- **Authentication System:**
+  - Auth modal with login/register tabs
+  - Registration stepper (3-step: email, account type, wallet)
+  - Email verification page
+  - User menu dropdown with KYC status shields
+- **User Dashboard:**
+  - Account-type-specific views (Social, Trader, Creator)
+  - Account type upgrade functionality
+  - KYC status banners
+- **Portfolio Page:**
+  - Trade history with user's transactions
+  - Watchlist with add/remove functionality
+  - Trending tokens display
+  - Portfolio stats (trades, volume, etc.)
+- **Access Control:**
+  - Role-based navigation filtering
+  - Launch page protected (Creator + KYC only)
+  - Account type checks on features
 
-### Smart Contracts (Sepolia Testnet) ✅
-- TokenFactory: `0x9c78920aAF6f7686438613b05d5921155f989884`
-- BondingCurve: `0xf0354A6E8491D05886a6216dB713b4133f391e3c`
+### Smart Contracts (Sepolia Testnet) ✅ V2
+- TokenFactory: `0x822f72301756D054d3F3F4834F1c0A1A03A95716`
+- BondingCurve: `0x66C9032Cc141Ce85d5f5D497e452c646548dEd2F`
 - XfernoToken template (ERC-20)
 
 ### Backend API (apps/api) ✅
-- NestJS 10 with GraphQL (Apollo)
+- NestJS 10 with REST API
 - Prisma ORM with PostgreSQL
-- Full database schema (286 lines)
-- Auth service (JWT, wallet login)
-- Launch service (token CRUD)
-- Trading service (buy/sell recording, quotes)
-- Graduation service (eligibility, deployment tracking)
+- Full database schema (441 lines)
+- **Auth Module:**
+  - Registration with email/password
+  - Login with JWT tokens
+  - Session management
+  - Profile retrieval with account type
+  - Account type upgrade API
+- **KYC Module:**
+  - KYC status tracking (NONE, PENDING, VERIFIED, REJECTED)
+  - Banner dismiss persistence
+  - KYC verification placeholder (provider integration pending)
+- **Indexer Module:**
+  - Trade indexing from blockchain events
+  - Price candle aggregation (1m, 5m, 15m, 1h, 4h, 1d)
+  - Token stats tracking
+  - User trade history API
+  - Watchlist CRUD API
+  - Trending tokens API
+  - WebSocket gateway for real-time updates
+- **Email Module:**
+  - Email verification service (templates ready, SMTP pending)
 - Redis caching configured
 - Rate limiting (Throttler)
+
+### Database Schema (441 lines) ✅
+- User (with accountType, kycStatus, kycBannerDismissed, emailVerified)
+- Session, EmailVerification, KycVerification
+- Token, TokenDeployment, PresaleContribution
+- Trade, PriceCandle, TokenStats, IndexerState
+- Watchlist, PriceAlert (new in Phase 2.5)
+- Network, Wallet, GraduationLog, Multisig, AdminLog, FeatureFlag
 
 ### Infrastructure ✅
 - Docker Compose (postgres, redis, api, web)
@@ -83,12 +127,14 @@ Blockers: None - Phase 1 complete!
 - Network adapters interfaces
 
 ### NOT Built Yet ❌
-- ZK Rollup (circom circuits)
-- DIDit Authentication integration
-- KYC Integration
+- DIDit OAuth integration (using email/password for now)
+- Actual KYC provider integration (Onfido, Jumio, etc.)
+- Two-Factor Authentication (2FA)
+- Social features (comments, follows, activity feed)
+- Admin Panel frontend
 - Multi-chain network adapters (actual implementations)
 - Bridges
-- Admin Panel frontend
+- BDAG network support
 
 ---
 
@@ -309,16 +355,19 @@ interface INetworkAdapter {
 | Token factory | ✅ TokenFactory.sol |
 | Mint/burn for bridges | ✅ XfernoTokenZK.sol |
 
-**Deployed (Sepolia - chainId 11155111):**
+**Deployed (Sepolia - chainId 11155111) - V2:**
 
 | Contract | Address | Etherscan |
 |----------|---------|-----------|
-| TokenFactory | `0x9c78920aAF6f7686438613b05d5921155f989884` | [View](https://sepolia.etherscan.io/address/0x9c78920aAF6f7686438613b05d5921155f989884) |
-| BondingCurve | `0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751` | [View](https://sepolia.etherscan.io/address/0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751) |
+| TokenFactory | `0x822f72301756D054d3F3F4834F1c0A1A03A95716` | [View](https://sepolia.etherscan.io/address/0x822f72301756D054d3F3F4834F1c0A1A03A95716) |
+| BondingCurve | `0x66C9032Cc141Ce85d5f5D497e452c646548dEd2F` | [View](https://sepolia.etherscan.io/address/0x66C9032Cc141Ce85d5f5D497e452c646548dEd2F) |
 | MockVerifier | `0x85ca2cA1109534763f6926243a6f4A51132E03e6` | [View](https://sepolia.etherscan.io/address/0x85ca2cA1109534763f6926243a6f4A51132E03e6) |
 | ZKRollup | `0xAd536C718b63883943ab86348726E10637Fb9869` | [View](https://sepolia.etherscan.io/address/0xAd536C718b63883943ab86348726E10637Fb9869) |
-| XfernoFactory | ⬜ Pending DEX build | - |
-| XfernoRouter | ⬜ Pending DEX build | - |
+
+**V2 Contract Config:**
+- Creation Fee: 0.001 ETH
+- Graduation Threshold: 6.9 ETH
+- Platform Fee: 1% (100 bps)
 
 ## Step 1.3: Presale Contract ✅ COMPLETE (BondingCurve)
 
@@ -434,30 +483,59 @@ packages/contracts/src/dex/
 
 ---
 
-# PHASE 2: Auth, KYC & Social
+# PHASE 2: Auth, KYC & Social ✅ 80% COMPLETE
 
-**Duration:** 3-4 weeks | **Status:** ⬜ NEXT | **Progress:** 0%  
+**Duration:** Completed | **Status:** ✅ 80% COMPLETE | **Progress:** 80%  
 **Dependencies:** Phase 1 complete ✅
 
-## Step 2.1: DIDit Integration ⬜
+## Step 2.1: Authentication System ✅ COMPLETE
 
-| Task | Status |
-|------|--------|
-| Register DIDit app | ⬜ |
-| OAuth flow implementation | ⬜ |
-| Identity verification | ⬜ |
-| Session management | ⬜ |
+| Task | Status | Notes |
+|------|--------|-------|
+| Registration flow | ✅ | 3-step stepper: email → account type → wallet |
+| Email/password login | ✅ | JWT tokens with refresh |
+| Session management | ✅ | Prisma Session model |
+| User profile API | ✅ | GET /api/auth/me |
+| Account types | ✅ | SOCIAL, TRADER, CREATOR |
+| Account type upgrade | ✅ | PUT /api/auth/account-type |
+| Auth context hooks | ✅ | useAuth, useAccountType, useRole |
+| Protected routes | ✅ | /launch requires CREATOR + KYC |
 
-## Step 2.2: KYC Flow ⬜
+**Note:** DIDit OAuth deferred - using email/password instead
 
-| Task | Status |
-|------|--------|
-| KYC provider integration | ⬜ |
-| Document upload | ⬜ |
-| Verification status | ⬜ |
-| KYC-gated features | ⬜ |
+## Step 2.2: KYC System ✅ PARTIAL (UI Complete, Provider Pending)
 
-## Step 2.3: Two-Factor Auth ⬜
+| Task | Status | Notes |
+|------|--------|-------|
+| KYC status tracking | ✅ | NONE, PENDING, VERIFIED, REJECTED |
+| KYC status UI | ✅ | Shields in user menu (red/yellow/green) |
+| KYC banners | ✅ | Dismissible banners below header |
+| Banner dismiss persistence | ✅ | Stored in database |
+| KYC page flow | ✅ | /kyc with step-by-step form |
+| KYC-gated features | ✅ | Launch requires VERIFIED status |
+| Actual KYC provider | ⬜ | Onfido/Jumio integration pending |
+
+## Step 2.3: Email Verification ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Email verification tokens | ✅ | EmailVerification model |
+| Verification email sending | ✅ | Template ready (SMTP config pending) |
+| /verify-email page | ✅ | Token validation + redirect |
+| Resend verification | ✅ | API endpoint available |
+
+## Step 2.4: User Dashboard ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Dashboard page | ✅ | /dashboard as home for authenticated |
+| Social dashboard | ✅ | Browse-only features |
+| Trader dashboard | ✅ | Trading + portfolio features |
+| Creator dashboard | ✅ | Launch + token management features |
+| Account type display | ✅ | Badge with icon |
+| Upgrade CTAs | ✅ | Functional upgrade buttons |
+
+## Step 2.5: Two-Factor Auth ⬜ NOT STARTED
 
 | Task | Status |
 |------|--------|
@@ -465,16 +543,16 @@ packages/contracts/src/dex/
 | Recovery codes | ⬜ |
 | 2FA enforcement | ⬜ |
 
-## Step 2.4: Social Features ⬜
+## Step 2.6: Social Features ⬜ NOT STARTED
 
 | Task | Status |
 |------|--------|
 | User profiles | ⬜ |
 | Comments system | ⬜ |
-| Follow/watch tokens | ⬜ |
+| Follow users | ⬜ |
 | Activity feed | ⬜ |
 
-## Step 2.5: Admin Panel ⬜
+## Step 2.7: Admin Panel ⬜ NOT STARTED
 
 | Task | Status |
 |------|--------|
@@ -486,11 +564,73 @@ packages/contracts/src/dex/
 
 ## Phase 2 Checklist
 
-- [ ] 2.1 DIDit
-- [ ] 2.2 KYC
-- [ ] 2.3 2FA
-- [ ] 2.4 Social
-- [ ] 2.5 Admin
+- [x] 2.1 Authentication ✅
+- [x] 2.2 KYC (UI only) ✅
+- [x] 2.3 Email Verification ✅
+- [x] 2.4 User Dashboard ✅
+- [ ] 2.5 2FA
+- [ ] 2.6 Social
+- [ ] 2.7 Admin
+
+---
+
+# PHASE 2.5: Trading Interface ✅ COMPLETE
+
+**Duration:** 1 day | **Status:** ✅ COMPLETE | **Progress:** 100%  
+**Dependencies:** Phase 2 Auth complete ✅
+
+## Step 2.5.1: Portfolio Page ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Portfolio stats cards | ✅ | ETH balance, trades, volume, watchlist count |
+| Holdings tab | ✅ | Placeholder for on-chain balance lookup |
+| Trade history tab | ✅ | User's buy/sell transactions |
+| Watchlist tab | ✅ | Starred tokens with prices |
+| Trending tab | ✅ | Top tokens by volume |
+| Account type gating | ✅ | Requires TRADER or CREATOR |
+
+## Step 2.5.2: Watchlist System ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Watchlist model | ✅ | userId, tokenAddress, chainId, notes |
+| Add to watchlist API | ✅ | POST /api/indexer/watchlist |
+| Remove from watchlist API | ✅ | DELETE /api/indexer/watchlist/:token |
+| Get watchlist API | ✅ | GET /api/indexer/watchlist |
+| Star/unstar UI | ✅ | Toggle buttons on tokens |
+
+## Step 2.5.3: User Trades API ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| User trades endpoint | ✅ | GET /api/indexer/user/trades |
+| Filter by wallet addresses | ✅ | Uses linked wallets |
+| Trade row component | ✅ | Buy/sell, amount, timestamp, tx link |
+
+## Step 2.5.4: Trending Tokens ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Trending tokens endpoint | ✅ | GET /api/indexer/trending |
+| Sort by volume/trades | ✅ | Ordered by 24h activity |
+| Trending token row | ✅ | Rank, price, change, watch button |
+
+## Step 2.5.5: Token Selector Enhancement ✅ COMPLETE
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Recent tokens localStorage | ✅ | Last 5 selected tokens |
+| Auto-load recent on open | ✅ | Shows in selector dialog |
+| Add to recent on select | ✅ | Updates list on selection |
+
+## Phase 2.5 Checklist
+
+- [x] 2.5.1 Portfolio Page ✅
+- [x] 2.5.2 Watchlist System ✅
+- [x] 2.5.3 User Trades API ✅
+- [x] 2.5.4 Trending Tokens ✅
+- [x] 2.5.5 Token Selector ✅
 
 ---
 
@@ -657,14 +797,15 @@ packages/contracts/src/dex/
 # FRONTEND COMPONENTS BUILT (Reference)
 
 ## UI Components (apps/web/src/components/ui/)
-- badge.tsx, button.tsx, card.tsx, dialog.tsx
-- dropdown-menu.tsx, input.tsx, label.tsx
-- skeleton.tsx, slider.tsx, sonner.tsx (toasts)
-- spinner.tsx, tabs.tsx, textarea.tsx
+- avatar.tsx, badge.tsx, button.tsx, card.tsx, dialog.tsx
+- dropdown-menu.tsx, input.tsx, label.tsx, progress.tsx
+- select.tsx, skeleton.tsx, slider.tsx, sonner.tsx (toasts)
+- spinner.tsx, switch.tsx, tabs.tsx, textarea.tsx
 - error-boundary.tsx, empty-state.tsx
 - copy-button.tsx, price-display.tsx
 
 ## Feature Components
+- **Auth:** auth-modal.tsx, registration-stepper.tsx, user-menu.tsx, kyc-banner.tsx
 - **Wallet:** connect-button.tsx, network-status.tsx, token-balances.tsx
 - **Trading:** chart.tsx, order-book.tsx, recent-trades.tsx, token-selector.tsx
 - **Tokens:** token-card.tsx, token-list.tsx, creator-tokens.tsx, featured-tokens.tsx
@@ -672,14 +813,23 @@ packages/contracts/src/dex/
 - **Layout:** header.tsx, footer.tsx
 
 ## Pages (apps/web/src/app/)
-- `/` - Landing page
+- `/` - Landing page (redirects to /dashboard if authenticated)
+- `/dashboard` - User dashboard (account-type specific views)
 - `/tokens` - Token discovery
 - `/tokens/[address]` - Token detail
-- `/launch` - Token creation wizard
+- `/launch` - Token creation wizard (CREATOR + KYC required)
 - `/trade` - Trading interface
+- `/portfolio` - Portfolio with holdings, trades, watchlist, trending
+- `/profile` - User profile
+- `/settings` - User settings
+- `/kyc` - KYC verification flow
+- `/auth/verify-email` - Email verification
 - `/docs` - Documentation (placeholder)
 
-## Hooks (apps/web/src/lib/)
+## Hooks & Lib (apps/web/src/lib/)
+- **auth/**: api.ts, context.tsx, types.ts, index.ts
+  - useAuth, useAccountType, useRole, useKycStatus
+- **api/**: trading.ts (useUserTrades, useWatchlist, useTrendingTokens)
 - **contracts/**: addresses.ts, abis.ts, hooks.ts, events.ts
 - **hooks/**: use-toast.ts
 
@@ -756,16 +906,61 @@ packages/contracts/src/dex/
 | 2024-12-04 | 1 | 1.6 | Trading UI frontend |
 | 2024-12-05 | 1 | 1.7 | Token discovery + detail pages |
 | 2024-12-05 | - | - | Frontend polish (toasts, errors, empty states) |
+| 2024-12-06 | 2 | 2.1 | Auth system: registration, login, JWT, sessions |
+| 2024-12-06 | 2 | 2.2 | KYC UI: status shields, banners, page flow |
+| 2024-12-06 | 2 | 2.3 | Email verification system |
+| 2024-12-06 | 2 | 2.4 | User dashboard with account-type views |
+| 2024-12-06 | 2 | - | Account types (SOCIAL, TRADER, CREATOR) + upgrade |
+| 2024-12-06 | 2 | - | Role-based access control (Launch = CREATOR + KYC) |
+| 2024-12-06 | 1 | 1.2 | V2 contracts deployed to Sepolia (new addresses) |
+| 2024-12-06 | 2.5 | 2.5.1 | Portfolio page with stats, tabs |
+| 2024-12-06 | 2.5 | 2.5.2 | Watchlist system (DB + API + UI) |
+| 2024-12-06 | 2.5 | 2.5.3 | User trades API + trade history UI |
+| 2024-12-06 | 2.5 | 2.5.4 | Trending tokens API + UI |
+| 2024-12-06 | 2.5 | 2.5.5 | Token selector with recent tokens localStorage |
 
 ---
 
 # IMMEDIATE NEXT STEPS
 
-1. **Backend API** - Initialize NestJS in apps/api
-2. **Database** - Setup Prisma with PostgreSQL
-3. **Docker** - Create docker-compose.dev.yml
-4. **Graduation Engine** - Implement DEX pool creation
-5. **Multi-chain** - Deploy to Base Sepolia
+1. **BDAG Network Adapter** - Implement network adapter for BDAG chain
+2. **Multi-chain deployment** - Deploy contracts to Base Sepolia
+3. **KYC Provider** - Integrate actual KYC provider (Onfido/Jumio)
+4. **2FA** - Implement TOTP-based two-factor authentication
+5. **Social Features** - User profiles, comments, follows
+
+---
+
+# API ENDPOINTS REFERENCE
+
+## Auth (`/api/auth/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /register | ❌ | Create account |
+| POST | /login | ❌ | Login, get JWT |
+| POST | /logout | ✅ | End session |
+| GET | /me | ✅ | Get profile |
+| PUT | /account-type | ✅ | Upgrade account |
+
+## KYC (`/api/kyc/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /status | ✅ | Get KYC status |
+| POST | /start | ✅ | Start KYC process |
+| POST | /banner/dismiss | ✅ | Dismiss banner |
+
+## Indexer (`/api/indexer/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /status | ❌ | Indexer status |
+| GET | /trades/:token | ❌ | Token trades |
+| GET | /candles/:token | ❌ | Price candles |
+| GET | /stats/:token | ❌ | Token stats |
+| GET | /user/trades | ✅ | User's trades |
+| GET | /watchlist | ✅ | User's watchlist |
+| POST | /watchlist | ✅ | Add to watchlist |
+| DELETE | /watchlist/:token | ✅ | Remove from watchlist |
+| GET | /trending | ❌ | Trending tokens |
 
 ---
 

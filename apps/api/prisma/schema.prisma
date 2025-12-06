@@ -438,3 +438,34 @@ model TokenStats {
   @@index([volume24h])
   @@index([priceChange24h])
 }
+
+// ============== USER TRADING MODELS ==============
+
+model Watchlist {
+  id           String   @id @default(uuid())
+  userId       String
+  tokenAddress String
+  chainId      Int
+  addedAt      DateTime @default(now())
+  notes        String?
+
+  @@unique([userId, tokenAddress, chainId])
+  @@index([userId])
+  @@index([tokenAddress])
+}
+
+model PriceAlert {
+  id           String   @id @default(uuid())
+  userId       String
+  tokenAddress String
+  chainId      Int
+  targetPrice  Decimal  @db.Decimal(78, 18)
+  condition    String   // 'above' | 'below'
+  triggered    Boolean  @default(false)
+  triggeredAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenAddress])
+  @@index([triggered])
+}

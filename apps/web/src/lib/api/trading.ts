@@ -194,3 +194,123 @@ export function intervalToApiFormat(label: string): string {
   };
   return mapping[label] || '5m';
 }
+
+// ========== USER-SPECIFIC API ==========
+
+export interface WatchlistItem {
+  id: string;
+  userId: string;
+  tokenAddress: string;
+  chainId: number;
+  addedAt: string;
+  notes?: string;
+}
+
+export interface TrendingToken {
+  tokenAddress: string;
+  chainId: number;
+  currentPrice: string;
+  priceChange24h: number;
+  volume24h: string;
+  trades24h: number;
+  totalTrades: number;
+}
+
+// Get authenticated header
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('xferno_token') : null;
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+}
+
+// Fetch user's trade history
+export async function fetchUserTrades(chainId: number, limit = 50): Promise<Trade[]> {
+  const response = await fetch(
+    `${API_BASE}/api/indexer/user/trades?chainId=${chainId}&limit=${limit}`,
+    { headers: getAuthHeaders() }
+  );
+  if (!response.ok) throw new Error('Failed to fetch user trades');
+  const data = await response.json();
+  return data.trades;
+}
+
+// Fetch user's watchlist
+export async function fetchWatchlist(chainId: number): Promise<WatchlistItem[]> {
+  const response = await fetch(
+    `${API_BASE}/api/indexer/watchlist?chainId=${chainId}`,
+    { headers: getAuthHeaders() }
+  );
+  if (!response.ok) throw new Error('Failed to fetch watchlist');
+  const data = await response.json();
+  return data.watchlist;
+}
+
+// Add token to watchlist
+export async function addToWatchlist(
+  tokenAddress: string,
+  chainId: number,
+  notes?: string
+): Promise<WatchlistItem> {
+  const response = await fetch(`${API_BASE}/api/indexer/watchlist`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ tokenAddress, chainId, notes }),
+  });
+  if (!response.ok) throw new Error('Failed to add to watchlist');
+  const data = await response.json();
+  return data.item;
+}
+
+// Remove token from watchlist
+export async function removeFromWatchlist(
+  tokenAddress: string,
+  chainId: number
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/api/indexer/watchlist/${tokenAddress}?chainId=${chainId}`,
+    { method: 'DELETE', headers: getAuthHeaders() }
+  );
+  if (!response.ok) throw new Error('Failed to remove from watchlist');
+}
+
+// Fetch trending tokens
+export async function fetchTrendingTokens(
+  chainId: number,
+  limit = 10
+): Promise<TrendingToken[]> {
+  const response = await fetch(
+    `${API_BASE}/api/indexer/trending?chainId=${chainId}&limit=${limit}`
+  );
+  if (!response.ok) throw new Error('Failed to fetch trending tokens');
+  const data = await response.json();
+  return data.tokens;
+}
+
+// React Query hooks for new endpoints
+export function useUserTrades(chainId: number, limit = 50) {
+  return useQuery({
+    queryKey: ['userTrades', chainId],
+    queryFn: () => fetchUserTrades(chainId, limit),
+    refetchInterval: 10000,
+    enabled: typeof window !== 'undefined' && !!localStorage.getItem('xferno_token'),
+  });
+}
+
+export function useWatchlist(chainId: number) {
+  return useQuery({
+    queryKey: ['watchlist', chainId],
+    queryFn: () => fetchWatchlist(chainId),
+    refetchInterval: 30000,
+    enabled: typeof window !== 'undefined' && !!localStorage.getItem('xferno_token'),
+  });
+}
+
+export function useTrendingTokens(chainId: number, limit = 10) {
+  return useQuery({
+    queryKey: ['trendingTokens', chainId, limit],
+    queryFn: () => fetchTrendingTokens(chainId, limit),
+    refetchInterval: 30000,
+  });
+}

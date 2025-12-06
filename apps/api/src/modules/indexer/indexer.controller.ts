@@ -1,5 +1,6 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { IndexerService } from './indexer.service';
+import { JwtAuthGuard } from '../auth/jwt.strategy';
 
 @Controller('indexer')
 export class IndexerController {
@@ -94,6 +95,113 @@ export class IndexerController {
         allTimeLow: stats.allTimeLow.toString(),
         updatedAt: stats.updatedAt.toISOString(),
       },
+    };
+  }
+
+  // ========== USER-SPECIFIC ENDPOINTS ==========
+
+  @Get('user/trades')
+  @UseGuards(JwtAuthGuard)
+  async getUserTrades(
+    @Request() req: any,
+    @Query('chainId') chainId: string,
+    @Query('limit') limit?: string,
+  ) {
+    const wallets = req.user.wallets || [];
+    const addresses = wallets.map((w: any) => w.address.toLowerCase());
+    
+    if (addresses.length === 0) {
+      return { trades: [] };
+    }
+
+    const trades = await this.indexerService.getUserTrades(
+      addresses,
+      parseInt(chainId) || 11155111,
+      parseInt(limit || '50'),
+    );
+
+    return {
+      trades: trades.map((t) => ({
+        id: t.id,
+        tokenAddress: t.tokenAddress,
+        traderAddress: t.traderAddress,
+        tradeType: t.tradeType,
+        ethAmount: t.ethAmount.toString(),
+        tokenAmount: t.tokenAmount.toString(),
+        pricePerToken: t.pricePerToken.toString(),
+        txHash: t.txHash,
+        blockNumber: t.blockNumber.toString(),
+        blockTimestamp: t.blockTimestamp.toISOString(),
+      })),
+    };
+  }
+
+  @Get('watchlist')
+  @UseGuards(JwtAuthGuard)
+  async getWatchlist(
+    @Request() req: any,
+    @Query('chainId') chainId: string,
+  ) {
+    const items = await this.indexerService.getWatchlist(
+      req.user.id,
+      parseInt(chainId) || 11155111,
+    );
+
+    return { watchlist: items };
+  }
+
+  @Post('watchlist')
+  @UseGuards(JwtAuthGuard)
+  async addToWatchlist(
+    @Request() req: any,
+    @Body() body: { tokenAddress: string; chainId: number; notes?: string },
+  ) {
+    const item = await this.indexerService.addToWatchlist(
+      req.user.id,
+      body.tokenAddress.toLowerCase(),
+      body.chainId,
+      body.notes,
+    );
+
+    return { success: true, item };
+  }
+
+  @Delete('watchlist/:tokenAddress')
+  @UseGuards(JwtAuthGuard)
+  async removeFromWatchlist(
+    @Request() req: any,
+    @Param('tokenAddress') tokenAddress: string,
+    @Query('chainId') chainId: string,
+  ) {
+    await this.indexerService.removeFromWatchlist(
+      req.user.id,
+      tokenAddress.toLowerCase(),
+      parseInt(chainId) || 11155111,
+    );
+
+    return { success: true };
+  }
+
+  @Get('trending')
+  async getTrendingTokens(
+    @Query('chainId') chainId: string,
+    @Query('limit') limit?: string,
+  ) {
+    const tokens = await this.indexerService.getTrendingTokens(
+      parseInt(chainId) || 11155111,
+      parseInt(limit || '10'),
+    );
+
+    return {
+      tokens: tokens.map((t) => ({
+        tokenAddress: t.tokenAddress,
+        chainId: t.chainId,
+        currentPrice: t.currentPrice.toString(),
+        priceChange24h: parseFloat(t.priceChange24h.toString()),
+        volume24h: t.volume24h.toString(),
+        trades24h: t.trades24h,
+        totalTrades: t.totalTrades,
+      })),
     };
   }
 }

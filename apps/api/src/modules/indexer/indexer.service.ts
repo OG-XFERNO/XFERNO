@@ -534,4 +534,51 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
       })),
     };
   }
+
+  // ========== USER-SPECIFIC QUERIES ==========
+
+  async getUserTrades(walletAddresses: string[], chainId: number, limit = 50) {
+    return this.prisma.trade.findMany({
+      where: {
+        traderAddress: { in: walletAddresses.map(a => a.toLowerCase()) },
+        chainId,
+      },
+      orderBy: { blockTimestamp: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getWatchlist(userId: string, chainId: number) {
+    return this.prisma.watchlist.findMany({
+      where: { userId, chainId },
+      orderBy: { addedAt: 'desc' },
+    });
+  }
+
+  async addToWatchlist(userId: string, tokenAddress: string, chainId: number, notes?: string) {
+    return this.prisma.watchlist.upsert({
+      where: {
+        userId_tokenAddress_chainId: { userId, tokenAddress, chainId },
+      },
+      create: { userId, tokenAddress, chainId, notes },
+      update: { notes },
+    });
+  }
+
+  async removeFromWatchlist(userId: string, tokenAddress: string, chainId: number) {
+    return this.prisma.watchlist.deleteMany({
+      where: { userId, tokenAddress, chainId },
+    });
+  }
+
+  async getTrendingTokens(chainId: number, limit = 10) {
+    return this.prisma.tokenStats.findMany({
+      where: { chainId },
+      orderBy: [
+        { volume24h: 'desc' },
+        { trades24h: 'desc' },
+      ],
+      take: limit,
+    });
+  }
 }

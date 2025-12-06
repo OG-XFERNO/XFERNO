@@ -36,8 +36,33 @@ interface TokenSelectorProps {
   className?: string;
 }
 
-// Recently traded tokens (would come from localStorage or API)
-const RECENT_TOKENS: Address[] = [];
+// Recent tokens storage key
+const RECENT_TOKENS_KEY = 'xferno_recent_tokens';
+const MAX_RECENT_TOKENS = 5;
+
+// Get recent tokens from localStorage
+function getRecentTokens(): Address[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(RECENT_TOKENS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Save token to recent tokens
+export function addRecentToken(tokenAddress: Address): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getRecentTokens();
+    const filtered = current.filter(t => t.toLowerCase() !== tokenAddress.toLowerCase());
+    const updated = [tokenAddress, ...filtered].slice(0, MAX_RECENT_TOKENS);
+    localStorage.setItem(RECENT_TOKENS_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export function TokenSelector({ selectedToken, onSelect, className }: TokenSelectorProps) {
   const router = useRouter();
@@ -46,6 +71,12 @@ export function TokenSelector({ selectedToken, onSelect, className }: TokenSelec
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchAddress, setSearchAddress] = useState<Address | undefined>();
+  const [recentTokens, setRecentTokens] = useState<Address[]>([]);
+
+  // Load recent tokens on mount
+  useEffect(() => {
+    setRecentTokens(getRecentTokens());
+  }, []);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -86,6 +117,10 @@ export function TokenSelector({ selectedToken, onSelect, className }: TokenSelec
   }
 
   const handleSelect = (token: Address) => {
+    // Add to recent tokens
+    addRecentToken(token);
+    setRecentTokens(getRecentTokens());
+    
     if (onSelect) {
       onSelect(token);
     } else {
@@ -208,11 +243,11 @@ export function TokenSelector({ selectedToken, onSelect, className }: TokenSelec
           )}
 
           {/* Recent Tokens */}
-          {RECENT_TOKENS.length > 0 && !search && (
+          {recentTokens.length > 0 && !search && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Recent</p>
               <div className="space-y-1">
-                {RECENT_TOKENS.map((token) => (
+                {recentTokens.map((token: Address) => (
                   <RecentTokenItem
                     key={token}
                     address={token}
@@ -224,7 +259,7 @@ export function TokenSelector({ selectedToken, onSelect, className }: TokenSelec
           )}
 
           {/* Empty State */}
-          {!search && RECENT_TOKENS.length === 0 && (
+          {!search && recentTokens.length === 0 && (
             <div className="text-center py-8">
               <Coins className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-muted-foreground mb-2">
