@@ -80,11 +80,12 @@ export class KycService {
   ) {
     this.diditAppId = this.configService.get<string>('DIDIT_APP_ID', '');
     this.diditApiKey = this.configService.get<string>('DIDIT_API_KEY', '');
-    this.diditApiUrl = this.configService.get<string>('DIDIT_API_URL', 'https://apx.didit.me/v2');
+    // Use the correct Didit verification API URL
+    this.diditApiUrl = this.configService.get<string>('DIDIT_API_URL', 'https://verification.didit.me/v2');
     this.diditWebhookSecret = this.configService.get<string>('DIDIT_WEBHOOK_SECRET', '');
     this.webhookCallbackUrl = this.configService.get<string>(
       'DIDIT_WEBHOOK_URL',
-      'http://localhost:3002/kyc/didit/webhook'
+      'http://localhost:3002/api/kyc/didit/webhook'
     );
   }
 
@@ -93,15 +94,6 @@ export class KycService {
    */
   isDiditConfigured(): boolean {
     return !!this.diditAppId && !!this.diditApiKey;
-  }
-
-  /**
-   * Get Didit authorization header
-   */
-  private getDiditAuthHeader(): string {
-    // Didit uses Basic auth with APP_ID:API_KEY
-    const credentials = Buffer.from(`${this.diditAppId}:${this.diditApiKey}`).toString('base64');
-    return `Basic ${credentials}`;
   }
 
   /**
@@ -138,28 +130,35 @@ export class KycService {
     }
 
     try {
+      this.logger.log(`Creating Didit session for user ${userId}`);
+      this.logger.log(`API URL: ${this.diditApiUrl}/session/`);
+      this.logger.log(`Callback URL: ${this.webhookCallbackUrl}`);
+
       // Call Didit API to create a verification session
-      const response = await fetch(`${this.diditApiUrl}/sessions/`, {
+      // Using the correct endpoint: POST /v2/session/ at verification.didit.me
+      const response = await fetch(`${this.diditApiUrl}/session/`, {
         method: 'POST',
         headers: {
-          'Authorization': this.getDiditAuthHeader(),
+          'X-Api-Key': this.diditApiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          // workflow_id is required - use the default KYC workflow from your Didit dashboard
+          // You can create workflows at https://business.didit.me
+          workflow_id: this.diditAppId, // In Didit, the app_id is often used as workflow_id
           callback: this.webhookCallbackUrl,
           vendor_data: userId, // Pass our userId for webhook callback
-          features: ['kyc'], // Request KYC verification
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(`Didit session creation failed: ${response.status} - ${errorText}`);
-        throw new BadRequestException(`Failed to create Didit session: ${response.statusText}`);
+        throw new BadRequestException(`Failed to create Didit session: ${response.status} - ${errorText}`);
       }
 
       const sessionData: DiditSessionResponse = await response.json();
-      this.logger.log(`Didit session created: ${sessionData.session_id}`);
+      this.logger.log(`Didit session created: ${sessionData.session_id}, URL: ${sessionData.url}`);
 
       // Create KycVerification record
       await this.prisma.kycVerification.create({
@@ -307,10 +306,10 @@ export class KycService {
     }
 
     try {
-      const response = await fetch(`${this.diditApiUrl}/sessions/${sessionId}/`, {
+      const response = await fetch(`${this.diditApiUrl}/session/${sessionId}/`, {
         method: 'GET',
         headers: {
-          'Authorization': this.getDiditAuthHeader(),
+          'X-Api-Key': this.diditApiKey,
         },
       });
 
