@@ -374,16 +374,16 @@ For users who want simpler L1-only tokens without ZK complexity:
 | XfernoFactory.sol for BDAG | ✅ | Create pairs (EVM compatible) |
 | XfernoRouter.sol for BDAG | ✅ | Swap routing (EVM compatible) |
 | GraduationEngine.sol for BDAG | ✅ | Graduation + LP (EVM compatible) |
-| Deploy to BDAG testnet | ⬜ | Pending testnet access |
+| Deploy to BDAG testnet | ⬜ | deploy-bdag.sh script ready |
 
 ## 3.4 Solana Integration
 
 | Task | Status | Description |
 |------|--------|-------------|
-| SPL Token program integration | ⬜ | Token creation |
+| SPL Token program integration | ✅ | createMint, mintTo, getAccount |
 | Solana DEX integration | ⬜ | Raydium/Orca or custom |
 | Solana presale program | ⬜ | Bonding curve equivalent |
-| SolanaAdapter implementation | ⬜ | Full adapter |
+| SolanaAdapter implementation | ✅ | Full SPL token deployment |
 | Deploy to Solana devnet | ⬜ | Test deployment |
 
 ## 3.5 Launch Wizard Updates
@@ -762,6 +762,9 @@ packages/contracts/src/
 | 2024-12-06 | 3 | Multi-network native gas token display |
 | 2024-12-06 | 3 | Network badges on token cards and pages |
 | 2024-12-06 | 3 | Trade page native token support |
+| 2024-12-06 | 3 | SolanaAdapter with real SPL token deployment |
+| 2024-12-06 | 3 | deploy-bdag.sh script for Awakening Testnet |
+| 2024-12-06 | 3 | bdag-1043.json deployment config |
 
 ---
 
