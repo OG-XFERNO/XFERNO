@@ -751,6 +751,7 @@ packages/contracts/src/
 | 2024-12-06 | 3 | Graduation Engine v2 with NetworkAdapter integration |
 | 2024-12-06 | 3 | deployToNetwork + deployPool methods |
 | 2024-12-06 | 3 | Review step with network deployment summary |
+| 2024-12-06 | 3 | DB Migration + Seed (20 networks, 7 feature flags) |
 
 ---
 
@@ -761,9 +762,9 @@ packages/contracts/src/
 3. ✅ ~~Implement EVMAdapter~~ - Base class with ethers.js
 4. ✅ ~~Launch Wizard Integration~~ - 5-step flow with network selection
 5. ✅ ~~Graduation Engine v2~~ - NetworkAdapter-based deployment
-6. **Deploy BDAG Contracts** - Full contract suite to BDAG testnet
-7. **Full SolanaAdapter** - Complete SPL token + Raydium integration
-8. **Run DB Migration + Seed** - Populate networks table
+6. ✅ ~~Run DB Migration + Seed~~ - 20 networks + 7 feature flags seeded
+7. **Deploy BDAG Contracts** - Full contract suite to BDAG testnet
+8. **Full SolanaAdapter** - Complete SPL token + Raydium integration
 9. **End-to-End Testing** - Test full launch flow with testnet
 
 ---
