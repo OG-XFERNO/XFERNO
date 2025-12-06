@@ -11,13 +11,13 @@
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
 ║                              XFERNO BUILD PROGRESS                                   ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ██████████████████████████████████████░░  85%                   ║
+║  Overall Progress:  ███████████████████████████████████████░  90%                   ║
 ║                                                                                      ║
 ║  Phase 0: Foundation & Infra    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 1: ETH + ZKR MVP         ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2: Auth, KYC & Social    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2.5: Trading Interface   ████████████████████  100% ✅ COMPLETE              ║
-║  Phase 3: BDAG + Adapters       █████████████████░░░  85%  🔄 IN PROGRESS           ║
+║  Phase 3: BDAG + Adapters       ███████████████████░  95%  🔄 IN PROGRESS           ║
 ║  Phase 4: Full Multi-Chain      ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ║  Phase 5: Production            ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
@@ -338,7 +338,7 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 # PHASE 3: BDAG + Network Adapters 🔄 IN PROGRESS
 
-**Status:** 🔄 85% → Target: 100%  
+**Status:** 🔄 95% → Target: 100%  
 **Duration:** 4-5 weeks  
 **Dependencies:** Phase 2 complete ✅
 
@@ -758,6 +758,10 @@ packages/contracts/src/
 | 2024-12-06 | 3 | Drop-chain strategy for failed split networks |
 | 2024-12-06 | 3 | Retry deployment endpoint |
 | 2024-12-06 | 3 | BDAG contracts confirmed EVM-compatible |
+| 2024-12-06 | 3 | BDAG Awakening Testnet config (Chain ID 1043) |
+| 2024-12-06 | 3 | Multi-network native gas token display |
+| 2024-12-06 | 3 | Network badges on token cards and pages |
+| 2024-12-06 | 3 | Trade page native token support |
 
 ---
 
