@@ -31,6 +31,7 @@ import {
   isChainSupported,
   getExplorerTxUrl,
 } from '@/lib/contracts';
+import { useTokenStats } from '@/lib/api/trading';
 import {
   ArrowDownUp,
   TrendingUp,
@@ -55,8 +56,14 @@ const DEFAULT_TOKEN = {
   price: 0,
   priceChange24h: 0,
   volume24h: 0,
+  trades24h: 0,
   marketCap: 0,
   liquidity: 0,
+  graduated: false,
+  totalTrades: 0,
+  totalVolume: 0,
+  allTimeHigh: 0,
+  allTimeLow: 0,
 };
 
 export default function TradePage() {
@@ -131,17 +138,25 @@ export default function TradePage() {
   const feeBps = curveParams ? Number(curveParams.feeBps) : 100;
   const platformFeePercent = feeBps / 10000;
 
-  // Build token display data
+  // Fetch indexed stats
+  const { data: indexedStats } = useTokenStats(tokenAddress, chainId);
+
+  // Build token display data with real indexed stats
   const token = tokenAddress && tokenInfo.name ? {
     address: tokenAddress,
     name: tokenInfo.name,
     symbol: tokenInfo.symbol || 'TOKEN',
     price: priceInEth,
-    priceChange24h: 0, // Would need price history
-    volume24h: 0, // Would need indexer
+    priceChange24h: indexedStats?.priceChange24h ?? 0,
+    volume24h: indexedStats?.volume24h ? parseFloat(indexedStats.volume24h) / 1e18 : 0,
+    trades24h: indexedStats?.trades24h ?? 0,
     marketCap: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) * 2 : 0,
     liquidity: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) : 0,
     graduated: tokenInfo.graduated || false,
+    totalTrades: indexedStats?.totalTrades ?? 0,
+    totalVolume: indexedStats?.totalVolume ? parseFloat(indexedStats.totalVolume) / 1e18 : 0,
+    allTimeHigh: indexedStats?.allTimeHigh ? parseFloat(indexedStats.allTimeHigh) : 0,
+    allTimeLow: indexedStats?.allTimeLow ? parseFloat(indexedStats.allTimeLow) : 0,
   } : DEFAULT_TOKEN;
 
   // Check if approval is needed for selling
@@ -441,7 +456,7 @@ export default function TradePage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-2xl font-bold">
-                            ${token.price.toFixed(8)}
+                            {token.price > 0 ? token.price.toExponential(4) : '0'} ETH
                           </span>
                           {token.priceChange24h !== 0 && (
                             <Badge
@@ -473,11 +488,19 @@ export default function TradePage() {
                   <TokenSelector selectedToken={tokenAddress} />
                   {tokenAddress && (
                     <div className="hidden sm:flex flex-wrap gap-4 sm:gap-6 text-sm">
-                      <div className="min-w-[80px]">
+                      <div className="min-w-[70px]">
+                        <p className="text-muted-foreground text-xs">24h Volume</p>
+                        <p className="font-medium">{formatNumber(token.volume24h)} ETH</p>
+                      </div>
+                      <div className="min-w-[70px]">
+                        <p className="text-muted-foreground text-xs">Trades</p>
+                        <p className="font-medium">{token.totalTrades}</p>
+                      </div>
+                      <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Liquidity</p>
                         <p className="font-medium">{formatNumber(token.liquidity)} ETH</p>
                       </div>
-                      <div className="min-w-[80px]">
+                      <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Your Balance</p>
                         <p className="font-medium">{formatNumber(tokenBalance)} {token.symbol}</p>
                       </div>
