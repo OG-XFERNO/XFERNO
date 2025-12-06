@@ -49,18 +49,6 @@ export class NetworksController {
   }
 
   /**
-   * Get a single network by ID
-   */
-  @Get(':id')
-  async getNetwork(@Param('id') id: string) {
-    const network = await this.networksService.getNetwork(id);
-    return {
-      success: true,
-      data: network,
-    };
-  }
-
-  /**
    * Estimate deployment costs for a multi-chain launch
    */
   @Get('estimate')
@@ -89,6 +77,18 @@ export class NetworksController {
         })),
         totalEstimatedCost: estimate.totalEstimatedCost.toString(),
       },
+    };
+  }
+
+  /**
+   * Get a single network by ID
+   */
+  @Get(':id')
+  async getNetwork(@Param('id') id: string) {
+    const network = await this.networksService.getNetwork(id);
+    return {
+      success: true,
+      data: network,
     };
   }
 }
