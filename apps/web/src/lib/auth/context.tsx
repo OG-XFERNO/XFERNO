@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
-import type { User, AuthResponse, RegisterData, LoginData } from './types';
+import type { User, AuthResponse, LoginData } from './types';
 import * as authApi from './api';
 
 interface AuthContextType {
@@ -10,9 +10,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
-  register: (data: RegisterData) => Promise<void>;
   login: (data: LoginData) => Promise<void>;
   loginWithWallet: () => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -50,20 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Fetch full profile after login
     authApi.getProfile().then(setUser);
   }, []);
-
-  const register = useCallback(async (data: RegisterData) => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const response = await authApi.register(data);
-      handleAuthResponse(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [handleAuthResponse]);
 
   const login = useCallback(async (data: LoginData) => {
     setError(null);
@@ -131,14 +117,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [logout]);
 
+  // Login with JWT token (used after email verification)
+  const loginWithToken = useCallback(async (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token);
+    try {
+      const profile = await authApi.getProfile();
+      setUser(profile);
+    } catch {
+      localStorage.removeItem(TOKEN_KEY);
+      throw new Error('Invalid token');
+    }
+  }, []);
+
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: !!user,
     error,
-    register,
     login,
     loginWithWallet,
+    loginWithToken,
     logout,
     refreshUser,
   };

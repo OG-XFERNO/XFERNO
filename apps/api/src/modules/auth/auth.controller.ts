@@ -6,6 +6,7 @@ import {
   Put,
   Delete,
   Param,
+  Query,
   UseGuards,
   Request,
   HttpCode,
@@ -28,6 +29,18 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  @Get('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(@Body() body: { email: string }) {
+    return this.authService.resendVerificationEmail(body.email);
   }
 
   @Post('wallet')

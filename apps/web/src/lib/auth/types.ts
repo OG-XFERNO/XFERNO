@@ -1,5 +1,6 @@
 export type UserRole = 'USER' | 'CREATOR' | 'ADMIN' | 'SUPER_ADMIN';
 export type KYCStatus = 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type AccountType = 'SOCIAL' | 'TRADER' | 'CREATOR';
 
 export interface User {
   id: string;
@@ -9,7 +10,9 @@ export interface User {
   avatarUrl?: string;
   bio?: string;
   role: UserRole;
+  accountType: AccountType;
   kycStatus: KYCStatus;
+  emailVerified: boolean;
   twoFactorEnabled: boolean;
   wallets: Wallet[];
   stats?: {
@@ -35,7 +38,18 @@ export interface AuthResponse {
     displayName?: string;
     avatarUrl?: string;
     role: UserRole;
+    accountType?: AccountType;
+    emailVerified?: boolean;
   };
+}
+
+export interface RegisterResponse {
+  message: string;
+  userId: string;
+  email: string;
+  requiresVerification: boolean;
+  requiresKyc: boolean;
+  accountType: AccountType;
 }
 
 export interface RegisterData {
@@ -43,6 +57,7 @@ export interface RegisterData {
   password: string;
   username?: string;
   displayName?: string;
+  accountType: AccountType;
 }
 
 export interface LoginData {

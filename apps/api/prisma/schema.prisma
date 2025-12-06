@@ -68,6 +68,12 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum AccountType {
+  SOCIAL    // View, like, follow - no KYC required
+  TRADER    // Buy/sell tokens - KYC required
+  CREATOR   // Launch tokens, create groups, live streams - KYC required
+}
+
 // ============== MODELS ==============
 
 model Network {
@@ -98,34 +104,56 @@ model Network {
 }
 
 model User {
-  id               String    @id @default(uuid())
-  email            String?   @unique
-  username         String?   @unique
+  id               String      @id @default(uuid())
+  email            String?     @unique
+  username         String?     @unique
   displayName      String?
   avatarUrl        String?
   bio              String?
   passwordHash     String?
-  twoFactorEnabled Boolean   @default(false)
+  emailVerified    Boolean     @default(false)
+  emailVerifiedAt  DateTime?
+  accountType      AccountType @default(SOCIAL)
+  twoFactorEnabled Boolean     @default(false)
   twoFactorSecret  String?
-  diditId          String?   @unique
-  googleId         String?   @unique
-  twitterId        String?   @unique
-  kycStatus        KYCStatus @default(NONE)
+  diditId          String?     @unique
+  googleId         String?     @unique
+  twitterId        String?     @unique
+  kycStatus        KYCStatus   @default(NONE)
   kycVerifiedAt    DateTime?
-  role             UserRole  @default(USER)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  role             UserRole    @default(USER)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
   lastLoginAt      DateTime?
 
   wallets              Wallet[]
   sessions             Session[]
   kycVerifications     KycVerification[]
+  emailVerifications   EmailVerification[]
   createdTokens        Token[]               @relation("Creator")
   presaleContributions PresaleContribution[]
 
   @@index([email])
   @@index([role])
   @@index([kycStatus])
+  @@index([emailVerified])
+  @@index([accountType])
+}
+
+// Email Verification Token
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
 }
 
 model Wallet {

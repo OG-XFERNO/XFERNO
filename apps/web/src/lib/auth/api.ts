@@ -1,5 +1,6 @@
 import type {
   AuthResponse,
+  RegisterResponse,
   RegisterData,
   LoginData,
   WalletLoginData,
@@ -38,29 +39,40 @@ async function fetchApi<T>(
 
 // ========== Auth API ==========
 
-export async function register(data: RegisterData): Promise<AuthResponse> {
-  return fetchApi<AuthResponse>('/auth/register', {
+export async function register(data: RegisterData): Promise<RegisterResponse> {
+  return fetchApi<RegisterResponse>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function login(data: LoginData): Promise<AuthResponse> {
-  return fetchApi<AuthResponse>('/auth/login', {
+  return fetchApi<AuthResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
+export async function verifyEmail(token: string): Promise<AuthResponse> {
+  return fetchApi<AuthResponse>(`/api/auth/verify-email?token=${token}`);
+}
+
+export async function resendVerification(email: string): Promise<{ message: string }> {
+  return fetchApi<{ message: string }>('/api/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function walletLogin(data: WalletLoginData): Promise<AuthResponse> {
-  return fetchApi<AuthResponse>('/auth/wallet', {
+  return fetchApi<AuthResponse>('/api/auth/wallet', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function getProfile(): Promise<User> {
-  return fetchApi<User>('/auth/me');
+  return fetchApi<User>('/api/auth/me');
 }
 
 export async function updateProfile(data: {
@@ -69,7 +81,7 @@ export async function updateProfile(data: {
   bio?: string;
   avatarUrl?: string;
 }): Promise<User> {
-  return fetchApi<User>('/auth/profile', {
+  return fetchApi<User>('/api/auth/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -79,14 +91,14 @@ export async function addWallet(data: {
   address: string;
   networkType: 'EVM' | 'SOLANA' | 'MOVE';
 }): Promise<{ id: string; address: string }> {
-  return fetchApi('/auth/wallet/add', {
+  return fetchApi('/api/auth/wallet/add', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function removeWallet(walletId: string): Promise<void> {
-  return fetchApi(`/auth/wallet/${walletId}`, {
+  return fetchApi(`/api/auth/wallet/${walletId}`, {
     method: 'DELETE',
   });
 }
@@ -94,11 +106,11 @@ export async function removeWallet(walletId: string): Promise<void> {
 // ========== KYC API ==========
 
 export async function getKycRequirements(): Promise<KycRequirements> {
-  return fetchApi<KycRequirements>('/kyc/requirements');
+  return fetchApi<KycRequirements>('/api/kyc/requirements');
 }
 
 export async function getKycStatus(): Promise<KycStatusResponse> {
-  return fetchApi<KycStatusResponse>('/kyc/status');
+  return fetchApi<KycStatusResponse>('/api/kyc/status');
 }
 
 export async function submitKyc(data: KycSubmitData): Promise<{
@@ -106,8 +118,17 @@ export async function submitKyc(data: KycSubmitData): Promise<{
   verificationId: string;
   status: string;
 }> {
-  return fetchApi('/kyc/submit', {
+  return fetchApi('/api/kyc/submit', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function createDiditSession(): Promise<{
+  sessionId: string;
+  verificationUrl: string;
+}> {
+  return fetchApi('/api/kyc/didit/session', {
+    method: 'POST',
   });
 }

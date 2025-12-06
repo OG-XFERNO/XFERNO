@@ -3,17 +3,26 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
-import { UserRole } from '@prisma/client';
+import * as crypto from 'crypto';
+import { UserRole, AccountType } from '@prisma/client';
+
+export type AccountTypeValue = 'SOCIAL' | 'TRADER' | 'CREATOR';
 
 export interface RegisterDto {
   email: string;
   password: string;
   username?: string;
   displayName?: string;
+  accountType: AccountTypeValue;
 }
 
 export interface LoginDto {
@@ -32,6 +41,8 @@ export interface JwtPayload {
   sub: string;
   email?: string;
   role: UserRole;
+  accountType?: AccountType;
+  emailVerified?: boolean;
 }
 
 export interface AuthResponse {
@@ -43,20 +54,54 @@ export interface AuthResponse {
     displayName?: string;
     avatarUrl?: string;
     role: UserRole;
+    accountType?: AccountType;
+    emailVerified?: boolean;
+    kycStatus?: string;
   };
+}
+
+export interface RegisterResponse {
+  message: string;
+  userId: string;
+  email: string;
+  requiresVerification: boolean;
+  requiresKyc: boolean;
+  accountType: AccountType;
 }
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly appUrl: string;
+  private readonly verificationTokenExpiry = 24 * 60 * 60 * 1000; // 24 hours
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-  ) {}
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
+  ) {
+    this.appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
+  }
+
+  /**
+   * Check if account type requires KYC
+   */
+  requiresKyc(accountType: AccountTypeValue): boolean {
+    return accountType === 'TRADER' || accountType === 'CREATOR';
+  }
 
   /**
    * Register a new user with email/password
+   * Sends verification email - user cannot login until verified
    */
-  async register(data: RegisterDto): Promise<AuthResponse> {
+  async register(data: RegisterDto): Promise<RegisterResponse> {
+    // Validate account type
+    const validAccountTypes: AccountTypeValue[] = ['SOCIAL', 'TRADER', 'CREATOR'];
+    if (!validAccountTypes.includes(data.accountType)) {
+      throw new BadRequestException('Invalid account type. Must be SOCIAL, TRADER, or CREATOR');
+    }
+
     // Check if email already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email.toLowerCase() },
@@ -79,22 +124,153 @@ export class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    // Create user
+    // Determine role based on account type
+    const role = data.accountType === 'CREATOR' ? UserRole.CREATOR : UserRole.USER;
+
+    // Create user (emailVerified defaults to false)
     const user = await this.prisma.user.create({
       data: {
         email: data.email.toLowerCase(),
         passwordHash,
         username: data.username?.toLowerCase(),
         displayName: data.displayName || data.username,
-        role: UserRole.USER,
+        accountType: data.accountType as AccountType,
+        role,
+        emailVerified: false,
       },
     });
 
-    // Generate JWT
+    // Create verification token and send email
+    await this.sendVerificationEmail(user.id, user.email!);
+
+    const needsKyc = this.requiresKyc(data.accountType);
+    this.logger.log(`New user registered: ${user.email} (${data.accountType}) - verification email sent, KYC required: ${needsKyc}`);
+
+    let message = 'Registration successful! Please check your email to verify your account.';
+    if (needsKyc) {
+      message += ' You will need to complete KYC verification to access trading features.';
+    }
+
+    return {
+      message,
+      userId: user.id,
+      email: user.email!,
+      requiresVerification: true,
+      requiresKyc: needsKyc,
+      accountType: user.accountType,
+    };
+  }
+
+  /**
+   * Send verification email to user
+   */
+  async sendVerificationEmail(userId: string, email: string): Promise<void> {
+    // Generate secure token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + this.verificationTokenExpiry);
+
+    // Save token to database
+    await this.prisma.emailVerification.create({
+      data: {
+        userId,
+        token,
+        expiresAt,
+      },
+    });
+
+    // Build verification URL
+    const verificationUrl = `${this.appUrl}/auth/verify-email?token=${token}`;
+
+    // Get user display name
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    // Send email
+    await this.emailService.sendVerificationEmail({
+      email,
+      displayName: user?.displayName || user?.username || undefined,
+      verificationUrl,
+      expiresIn: '24 hours',
+    });
+  }
+
+  /**
+   * Resend verification email
+   */
+  async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      // Don't reveal if email exists
+      return { message: 'If this email is registered, a verification link has been sent.' };
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    // Invalidate old tokens
+    await this.prisma.emailVerification.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // Send new verification email
+    await this.sendVerificationEmail(user.id, user.email!);
+
+    return { message: 'Verification email sent. Please check your inbox.' };
+  }
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(token: string): Promise<AuthResponse> {
+    const verification = await this.prisma.emailVerification.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!verification) {
+      throw new BadRequestException('Invalid verification token');
+    }
+
+    if (verification.usedAt) {
+      throw new BadRequestException('This verification link has already been used');
+    }
+
+    if (verification.expiresAt < new Date()) {
+      throw new BadRequestException('Verification link has expired. Please request a new one.');
+    }
+
+    // Mark token as used
+    await this.prisma.emailVerification.update({
+      where: { id: verification.id },
+      data: { usedAt: new Date() },
+    });
+
+    // Update user as verified
+    const user = await this.prisma.user.update({
+      where: { id: verification.userId },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    this.logger.log(`Email verified for user: ${user.email}`);
+
+    // Send welcome email
+    await this.emailService.sendWelcomeEmail({
+      email: user.email!,
+      displayName: user.displayName || user.username || undefined,
+    });
+
+    // Generate JWT for auto-login after verification
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email || undefined,
       role: user.role,
+      emailVerified: true,
     };
 
     return {
@@ -106,12 +282,14 @@ export class AuthService {
         displayName: user.displayName || undefined,
         avatarUrl: user.avatarUrl || undefined,
         role: user.role,
+        emailVerified: true,
       },
     };
   }
 
   /**
    * Login with email/password
+   * Blocks login if email not verified
    */
   async login(data: LoginDto): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({
@@ -128,6 +306,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check if email is verified
+    if (!user.emailVerified) {
+      throw new ForbiddenException({
+        message: 'Please verify your email before logging in',
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email,
+      });
+    }
+
     // Update last login
     await this.prisma.user.update({
       where: { id: user.id },
@@ -139,6 +326,7 @@ export class AuthService {
       sub: user.id,
       email: user.email || undefined,
       role: user.role,
+      emailVerified: true,
     };
 
     return {
@@ -150,6 +338,7 @@ export class AuthService {
         displayName: user.displayName || undefined,
         avatarUrl: user.avatarUrl || undefined,
         role: user.role,
+        emailVerified: true,
       },
     };
   }

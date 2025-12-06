@@ -13,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 
 // Feature modules
+import { EmailModule } from './modules/email/email.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { KycModule } from './modules/kyc/kyc.module';
 import { LaunchModule } from './modules/launch/launch.module';
@@ -72,6 +73,7 @@ import { IndexerModule } from './modules/indexer/indexer.module';
     HealthModule,
 
     // Features
+    EmailModule, // Global - must be before AuthModule
     AuthModule,
     KycModule,
     LaunchModule,
