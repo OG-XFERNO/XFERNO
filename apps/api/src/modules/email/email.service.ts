@@ -42,10 +42,8 @@ export class EmailService {
     this.fromEmail = this.configService.get<string>('EMAIL_FROM', 'noreply@xferno.io');
     this.fromName = this.configService.get<string>('EMAIL_FROM_NAME', 'XFERNO');
     this.appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
-    this.logoUrl = this.configService.get<string>(
-      'EMAIL_LOGO_URL',
-      'https://raw.githubusercontent.com/your-repo/xferno/main/logo.png'
-    );
+    // Use a placeholder logo or configure EMAIL_LOGO_URL with a publicly accessible URL
+    this.logoUrl = this.configService.get<string>('EMAIL_LOGO_URL', '');
   }
 
   /**
@@ -254,7 +252,10 @@ export class EmailService {
           <!-- Header with logo -->
           <tr>
             <td style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #262626;">
-              <img src="${this.logoUrl}" alt="XFERNO" width="150" style="display: block; margin: 0 auto;" />
+              ${this.logoUrl ? 
+                `<img src="${this.logoUrl}" alt="XFERNO" width="150" style="display: block; margin: 0 auto;" />` :
+                `<div style="font-size: 32px; font-weight: bold; color: #f97316; letter-spacing: 2px;">🔥 XFERNO</div>`
+              }
             </td>
           </tr>
           

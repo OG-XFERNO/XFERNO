@@ -68,8 +68,8 @@ export interface DiditWebhookPayload {
 @Injectable()
 export class KycService {
   private readonly logger = new Logger(KycService.name);
-  private readonly diditAppId: string;
   private readonly diditApiKey: string;
+  private readonly diditWorkflowId: string;
   private readonly diditApiUrl: string;
   private readonly diditWebhookSecret: string;
   private readonly webhookCallbackUrl: string;
@@ -78,8 +78,8 @@ export class KycService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.diditAppId = this.configService.get<string>('DIDIT_APP_ID', '');
     this.diditApiKey = this.configService.get<string>('DIDIT_API_KEY', '');
+    this.diditWorkflowId = this.configService.get<string>('DIDIT_WORKFLOW_ID', '');
     // Use the correct Didit verification API URL
     this.diditApiUrl = this.configService.get<string>('DIDIT_API_URL', 'https://verification.didit.me/v2');
     this.diditWebhookSecret = this.configService.get<string>('DIDIT_WEBHOOK_SECRET', '');
@@ -93,7 +93,7 @@ export class KycService {
    * Check if Didit is configured
    */
   isDiditConfigured(): boolean {
-    return !!this.diditAppId && !!this.diditApiKey;
+    return !!this.diditWorkflowId && !!this.diditApiKey;
   }
 
   /**
@@ -101,7 +101,7 @@ export class KycService {
    */
   async createDiditSession(userId: string): Promise<DiditSession> {
     if (!this.isDiditConfigured()) {
-      throw new BadRequestException('Didit KYC is not configured. Please set DIDIT_APP_ID and DIDIT_API_KEY.');
+      throw new BadRequestException('Didit KYC is not configured. Please set DIDIT_WORKFLOW_ID and DIDIT_API_KEY.');
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -143,9 +143,8 @@ export class KycService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // workflow_id is required - use the default KYC workflow from your Didit dashboard
-          // You can create workflows at https://business.didit.me
-          workflow_id: this.diditAppId, // In Didit, the app_id is often used as workflow_id
+          // workflow_id is required - create a KYC workflow at https://business.didit.me
+          workflow_id: this.diditWorkflowId,
           callback: this.webhookCallbackUrl,
           vendor_data: userId, // Pass our userId for webhook callback
         }),

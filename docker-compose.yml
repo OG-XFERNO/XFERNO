@@ -63,11 +63,11 @@ services:
       SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
       SEPOLIA_WS_URL: ${SEPOLIA_WS_URL:-wss://ethereum-sepolia-rpc.publicnode.com}
       # Didit KYC
-      DIDIT_APP_ID: ${DIDIT_APP_ID:-}
       DIDIT_API_KEY: ${DIDIT_API_KEY:-}
-      DIDIT_API_URL: ${DIDIT_API_URL:-https://apx.didit.me/v2}
+      DIDIT_WORKFLOW_ID: ${DIDIT_WORKFLOW_ID:-}
+      DIDIT_API_URL: ${DIDIT_API_URL:-https://verification.didit.me/v2}
       DIDIT_WEBHOOK_SECRET: ${DIDIT_WEBHOOK_SECRET:-}
-      DIDIT_WEBHOOK_URL: ${DIDIT_WEBHOOK_URL:-http://localhost:3002/kyc/didit/webhook}
+      DIDIT_WEBHOOK_URL: ${DIDIT_WEBHOOK_URL:-http://localhost:3002/api/kyc/didit/webhook}
       # Brevo Email
       BREVO_API_KEY: ${BREVO_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@xferno.io}
