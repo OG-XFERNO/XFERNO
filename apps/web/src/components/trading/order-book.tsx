@@ -143,7 +143,7 @@ export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
                   </span>
                 </div>
                 <span className="text-sm font-bold text-gradient-fire">
-                  {bondingProgress.toFixed(1)}%
+                  {bondingProgress < 1 ? bondingProgress.toFixed(4) : bondingProgress.toFixed(2)}%
                 </span>
               </div>
               
@@ -157,7 +157,7 @@ export function OrderBook({ tokenAddress, currentPrice }: OrderBookProps) {
               />
               
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                <span>{ethReserveFormatted.toFixed(4)} ETH</span>
+                <span>{ethReserveFormatted < 0.0001 ? ethReserveFormatted.toFixed(8) : ethReserveFormatted.toFixed(4)} ETH</span>
                 <span>Goal: {graduationThresholdFormatted} ETH</span>
               </div>
               

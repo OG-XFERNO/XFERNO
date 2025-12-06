@@ -165,7 +165,7 @@ export function useCurveParams() {
 }
 
 /**
- * Get token state on the bonding curve
+ * Get token state on the bonding curve (ethReserve, tokenSupply, graduated)
  */
 export function useTokenState(tokenAddress: Address | undefined) {
   const chainId = useChainId();
@@ -178,7 +178,7 @@ export function useTokenState(tokenAddress: Address | undefined) {
     args: tokenAddress ? [tokenAddress] : undefined,
     query: {
       enabled: !!addresses?.bondingCurve && !!tokenAddress,
-      refetchInterval: 10000, // Refetch every 10 seconds
+      refetchInterval: 2000, // Poll every 2 seconds for real-time bonding progress
     },
   });
 }
