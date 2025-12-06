@@ -3,7 +3,8 @@ import { useEffect, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
-const WS_BASE = API_BASE.replace('http', 'ws');
+// Socket.io uses HTTP for handshake, then upgrades to WebSocket
+const WS_BASE = API_BASE;
 
 // Types
 export interface Trade {
@@ -49,7 +50,7 @@ export async function fetchRecentTrades(
   limit = 50
 ): Promise<Trade[]> {
   const response = await fetch(
-    `${API_BASE}/indexer/trades/${tokenAddress}?chainId=${chainId}&limit=${limit}`
+    `${API_BASE}/api/indexer/trades/${tokenAddress}?chainId=${chainId}&limit=${limit}`
   );
   if (!response.ok) throw new Error('Failed to fetch trades');
   const data = await response.json();
@@ -65,7 +66,7 @@ export async function fetchPriceCandles(
   to: Date
 ): Promise<PriceCandle[]> {
   const response = await fetch(
-    `${API_BASE}/indexer/candles/${tokenAddress}?chainId=${chainId}&interval=${interval}&from=${from.toISOString()}&to=${to.toISOString()}`
+    `${API_BASE}/api/indexer/candles/${tokenAddress}?chainId=${chainId}&interval=${interval}&from=${from.toISOString()}&to=${to.toISOString()}`
   );
   if (!response.ok) throw new Error('Failed to fetch candles');
   const data = await response.json();
@@ -78,7 +79,7 @@ export async function fetchTokenStats(
   chainId: number
 ): Promise<TokenStats | null> {
   const response = await fetch(
-    `${API_BASE}/indexer/stats/${tokenAddress}?chainId=${chainId}`
+    `${API_BASE}/api/indexer/stats/${tokenAddress}?chainId=${chainId}`
   );
   if (!response.ok) throw new Error('Failed to fetch stats');
   const data = await response.json();
