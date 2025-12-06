@@ -11,13 +11,13 @@
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
 ║                              XFERNO BUILD PROGRESS                                   ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
-║  Overall Progress:  ████████████████████████████████░░░░░░░░  65%                   ║
+║  Overall Progress:  ████████████████████████████████████░░░░  70%                   ║
 ║                                                                                      ║
 ║  Phase 0: Foundation & Infra    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 1: ETH + ZKR MVP         ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2: Auth, KYC & Social    ████████████████████  100% ✅ COMPLETE              ║
 ║  Phase 2.5: Trading Interface   ████████████████████  100% ✅ COMPLETE              ║
-║  Phase 3: BDAG + Adapters       ░░░░░░░░░░░░░░░░░░░░   0%  🔄 IN PROGRESS           ║
+║  Phase 3: BDAG + Adapters       ██████░░░░░░░░░░░░░░  30%  🔄 IN PROGRESS           ║
 ║  Phase 4: Full Multi-Chain      ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ║  Phase 5: Production            ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ BLOCKED               ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
@@ -338,7 +338,7 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 # PHASE 3: BDAG + Network Adapters 🔄 IN PROGRESS
 
-**Status:** 🔄 0% → Target: 100%  
+**Status:** 🔄 30% → Target: 100%  
 **Duration:** 4-5 weeks  
 **Dependencies:** Phase 2 complete ✅
 
@@ -346,22 +346,22 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Networks table schema | ⬜ | Add all network fields |
-| Seed ETH, BDAG, Solana | ⬜ | Base networks |
-| Seed split networks | ⬜ | Arbitrum, Base, OP, BNB, Polygon, Avalanche, zkSync, Linea, Sei, Hyper, Monad |
-| Admin network toggle API | ⬜ | Enable/disable networks |
-| Network config validation | ⬜ | RPC, explorer, chain ID |
+| Networks table schema | ✅ | Custom IDs (ETH_MAINNET, BDAG_MAINNET, etc) |
+| Seed ETH, BDAG, Solana | ✅ | Base networks with full config |
+| Seed split networks | ✅ | Arbitrum, Base, OP, BNB, Polygon, Avalanche, zkSync, Linea, Sei, Hyper, Monad |
+| Admin network toggle API | ✅ | Enable/disable via NetworksController |
+| Network config validation | ✅ | RPC, explorer, chain ID in seed.ts |
 
 ## 3.2 NetworkAdapter Abstraction
 
 | Task | Status | Description |
 |------|--------|-------------|
-| INetworkAdapter interface | ⬜ | deployToken, deployBridge, deployDexPool, estimateGasCosts |
-| EVMAdapter base class | ⬜ | Common EVM logic |
-| EthereumAdapter | ⬜ | ETH-specific implementation |
-| BDAGAdapter | ⬜ | BDAG-specific implementation |
-| SolanaAdapter | ⬜ | SPL token deployment |
-| AdapterRegistry service | ⬜ | Get adapter by network ID |
+| INetworkAdapter interface | ✅ | deployToken, deployBridge, deployDexPool, estimateGasCosts |
+| EVMAdapter base class | ✅ | Common EVM logic with ethers.js |
+| EthereumAdapter | ✅ | ETH-specific implementation |
+| BDAGAdapter | ✅ | BDAG-specific implementation |
+| SolanaAdapter | ✅ | Skeleton ready (full impl pending) |
+| AdapterRegistry service | ✅ | NetworksService with adapter map |
 
 ## 3.3 BDAG Smart Contracts
 
@@ -390,9 +390,9 @@ For users who want simpler L1-only tokens without ZK complexity:
 
 | Task | Status | Description |
 |------|--------|-------------|
-| Base network selector | ⬜ | ETH / BDAG / Solana |
-| Split networks multi-select | ⬜ | All supported chains |
-| Launch mode selector | ⬜ | 4 modes with tooltips |
+| Base network selector | ✅ | ETH / BDAG / Solana in NetworkSelector |
+| Split networks multi-select | ✅ | All 11+ chains in NetworkSelector |
+| Launch mode selector | ✅ | 4 modes in LaunchModeSelector |
 | Graduation target config | ⬜ | Base asset selection |
 | Gas estimation display | ⬜ | Per-chain costs |
 | Review step updates | ⬜ | Show all selections |
@@ -741,18 +741,24 @@ packages/contracts/src/
 | 2024-12-06 | 2 | Settings page + Notifications (Brevo) |
 | 2024-12-06 | 2 | **Phase 2 COMPLETE** ✅ |
 | 2024-12-06 | 3 | Started Phase 3: BDAG + Adapters |
+| 2024-12-06 | 3 | Network Registry schema + seed data (20 networks) |
+| 2024-12-06 | 3 | NetworkAdapter interface + EVMAdapter + BDAGAdapter |
+| 2024-12-06 | 3 | SolanaAdapter skeleton |
+| 2024-12-06 | 3 | NetworksService + NetworksController |
+| 2024-12-06 | 3 | Frontend NetworkSelector with BDAG + Solana + all splits |
 
 ---
 
 # IMMEDIATE NEXT STEPS (Phase 3)
 
-1. **Update Network Schema** - Add all network fields and seed data
-2. **Create NetworkAdapter Interface** - Abstract deployment logic
-3. **Implement EVMAdapter** - Base class for EVM chains
+1. ✅ ~~Update Network Schema~~ - Custom IDs + seed data complete
+2. ✅ ~~Create NetworkAdapter Interface~~ - Full interface in place
+3. ✅ ~~Implement EVMAdapter~~ - Base class with ethers.js
 4. **Deploy BDAG Contracts** - Full contract suite to BDAG testnet
-5. **Implement SolanaAdapter** - SPL token deployment
-6. **Update Launch Wizard** - Base network + split network selection
-7. **Update Graduation Engine** - Multi-network deployment support
+5. **Full SolanaAdapter** - Complete SPL token + Raydium integration
+6. **Integrate Network Selection in Launch Page** - Wire up selectors
+7. **Update Graduation Engine v2** - Multi-network deployment support
+8. **Run DB Migration + Seed** - Populate networks table
 
 ---
 
