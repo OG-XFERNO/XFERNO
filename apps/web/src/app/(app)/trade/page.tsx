@@ -141,6 +141,11 @@ export default function TradePage() {
   // Fetch indexed stats
   const { data: indexedStats } = useTokenStats(tokenAddress, chainId);
 
+  // Calculate liquidity from contract state or indexed data
+  const contractLiquidity = tokenState?.ethReserve ? parseFloat(formatEther(tokenState.ethReserve)) : 0;
+  const indexedLiquidity = indexedStats?.totalVolume ? parseFloat(indexedStats.totalVolume) / 1e18 : 0;
+  const effectiveLiquidity = contractLiquidity > 0 ? contractLiquidity : indexedLiquidity;
+
   // Build token display data with real indexed stats
   const token = tokenAddress && tokenInfo.name ? {
     address: tokenAddress,
@@ -150,8 +155,8 @@ export default function TradePage() {
     priceChange24h: indexedStats?.priceChange24h ?? 0,
     volume24h: indexedStats?.volume24h ? parseFloat(indexedStats.volume24h) / 1e18 : 0,
     trades24h: indexedStats?.trades24h ?? 0,
-    marketCap: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) * 2 : 0,
-    liquidity: tokenState ? parseFloat(formatEther(tokenState.ethReserve)) : 0,
+    marketCap: effectiveLiquidity * 2,
+    liquidity: effectiveLiquidity,
     graduated: tokenInfo.graduated || false,
     totalTrades: indexedStats?.totalTrades ?? 0,
     totalVolume: indexedStats?.totalVolume ? parseFloat(indexedStats.totalVolume) / 1e18 : 0,
@@ -511,7 +516,7 @@ export default function TradePage() {
                       </div>
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Liquidity</p>
-                        <p className="font-medium">{formatNumber(token.liquidity)} ETH</p>
+                        <p className="font-medium">{formatPriceETH(token.liquidity)} ETH</p>
                       </div>
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Your Balance</p>

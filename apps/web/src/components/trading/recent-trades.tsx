@@ -55,10 +55,34 @@ export function RecentTrades({ tokenAddress }: RecentTradesProps) {
 
   const hasRealData = apiTrades && apiTrades.length > 0;
 
-  const formatPrice = (price: number) => price.toFixed(8);
+  // Format price with full decimals for small values
+  const formatPrice = (price: number) => {
+    if (price === 0) return '0';
+    if (price < 0.000001) {
+      return price.toFixed(12).replace(/\.?0+$/, '');
+    } else if (price < 0.001) {
+      return price.toFixed(9).replace(/\.?0+$/, '');
+    } else if (price < 1) {
+      return price.toFixed(6).replace(/\.?0+$/, '');
+    }
+    return price.toFixed(4);
+  };
+
   const formatAmount = (amount: number) => {
+    if (amount >= 1e12) return `${(amount / 1e12).toFixed(1)}T`;
+    if (amount >= 1e9) return `${(amount / 1e9).toFixed(1)}B`;
+    if (amount >= 1e6) return `${(amount / 1e6).toFixed(1)}M`;
     if (amount >= 1000) return `${(amount / 1000).toFixed(1)}K`;
     return amount.toFixed(0);
+  };
+
+  const formatTotal = (total: number) => {
+    if (total < 0.000001) {
+      return total.toFixed(9).replace(/\.?0+$/, '');
+    } else if (total < 0.001) {
+      return total.toFixed(6);
+    }
+    return total.toFixed(4);
   };
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
@@ -135,7 +159,7 @@ export function RecentTrades({ tokenAddress }: RecentTradesProps) {
                 </span>
                 <span className="text-right">{formatAmount(trade.amount)}</span>
                 <span className="text-right text-muted-foreground">
-                  {trade.total.toFixed(4)}
+                  {formatTotal(trade.total)}
                 </span>
                 <span className="text-right text-muted-foreground">
                   {formatTime(trade.time)}
