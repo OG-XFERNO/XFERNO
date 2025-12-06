@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickData, Time, ISeriesApi } from 'lightweight-charts';
+import { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, ISeriesApi, LineData } from 'lightweight-charts';
 import { useChainId } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ const timeframes = [
   { label: '1D', value: '1440' },
 ];
 
-// Convert API candles to chart format
+// Convert API candles to candlestick format
 function apiCandlesToChartData(candles: PriceCandle[]): CandlestickData[] {
   return candles.map((c) => ({
     time: c.time as Time,
@@ -25,6 +25,14 @@ function apiCandlesToChartData(candles: PriceCandle[]): CandlestickData[] {
     high: c.high,
     low: c.low,
     close: c.close,
+  }));
+}
+
+// Convert API candles to line format
+function apiCandlesToLineData(candles: PriceCandle[]): LineData[] {
+  return candles.map((c) => ({
+    time: c.time as Time,
+    value: c.close,
   }));
 }
 
@@ -37,25 +45,34 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const lineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
-  const isChartInitialized = useRef(false);
   const lastDataHash = useRef<string>('');
   const [selectedTimeframe, setSelectedTimeframe] = useState('5');
   const [chartType, setChartType] = useState<'candles' | 'line'>('candles');
   const chainId = useChainId();
 
-  // Fetch real candle data from API with 1-second polling
+  // Fetch real candle data from API with 2-second polling
   const interval = intervalToApiFormat(selectedTimeframe);
-  const { data: apiCandles, isLoading } = usePriceCandles(tokenAddress, chainId, interval, {
-    refetchInterval: 1000, // Poll every 1 second
-    refetchIntervalInBackground: false, // Don't poll when tab is hidden
+  const { data: apiCandles, isLoading, refetch } = usePriceCandles(tokenAddress, chainId, interval, {
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
   });
 
   const hasRealData = apiCandles && apiCandles.length > 0;
 
-  // Initialize chart only once
+  // Create chart on mount, recreate on chartType change
   useEffect(() => {
-    if (!chartContainerRef.current || isChartInitialized.current) return;
+    if (!chartContainerRef.current) return;
+
+    // Clean up existing chart
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      lineSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+    }
 
     // Chart configuration matching XFERNO theme
     const chart = createChart(chartContainerRef.current, {
@@ -86,7 +103,7 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
         borderColor: 'rgba(255, 255, 255, 0.1)',
         scaleMargins: {
           top: 0.1,
-          bottom: 0.1,
+          bottom: 0.2,
         },
       },
       timeScale: {
@@ -107,37 +124,39 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
 
     chartRef.current = chart;
 
-    // Add candlestick series with fire gradient colors
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#22c55e',
-      downColor: '#ef4444',
-      borderUpColor: '#22c55e',
-      borderDownColor: '#ef4444',
-      wickUpColor: '#22c55e',
-      wickDownColor: '#ef4444',
-    });
-
-    candleSeriesRef.current = candlestickSeries;
+    // Add main series based on chart type
+    if (chartType === 'candles') {
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#22c55e',
+        downColor: '#ef4444',
+        borderUpColor: '#22c55e',
+        borderDownColor: '#ef4444',
+        wickUpColor: '#22c55e',
+        wickDownColor: '#ef4444',
+      });
+      candleSeriesRef.current = candlestickSeries;
+    } else {
+      const lineSeries = chart.addLineSeries({
+        color: '#f5af19',
+        lineWidth: 2,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 4,
+      });
+      lineSeriesRef.current = lineSeries;
+    }
 
     // Add volume series
     const volumeSeries = chart.addHistogramSeries({
       color: '#f5af19',
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: '',
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+    });
+
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
     });
 
     volumeSeriesRef.current = volumeSeries;
-
-    volumeSeries.priceScale().applyOptions({
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
-
-    isChartInitialized.current = true;
 
     // Handle resize
     const handleResize = () => {
@@ -152,56 +171,59 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
     handleResize();
     window.addEventListener('resize', handleResize);
 
+    // Reset data hash to load data
+    lastDataHash.current = '';
+
     return () => {
       window.removeEventListener('resize', handleResize);
-      chart.remove();
-      chartRef.current = null;
-      candleSeriesRef.current = null;
-      volumeSeriesRef.current = null;
-      isChartInitialized.current = false;
-      lastDataHash.current = '';
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
     };
-  }, []);
+  }, [chartType]);
 
-  // Update data without recreating chart (smooth updates)
+  // Update data when candles change
   useEffect(() => {
-    if (!candleSeriesRef.current || !volumeSeriesRef.current || !apiCandles) return;
+    if (!chartRef.current || !apiCandles || apiCandles.length === 0) return;
 
-    // Create a hash to check if data actually changed
-    const dataHash = JSON.stringify(apiCandles.map(c => `${c.time}-${c.close}`));
-    if (dataHash === lastDataHash.current) return; // Skip if no change
+    // Create hash to check if data changed
+    const dataHash = `${chartType}-${selectedTimeframe}-${JSON.stringify(apiCandles.slice(-3).map(c => `${c.time}-${c.close}`))}`;
+    if (dataHash === lastDataHash.current) return;
     lastDataHash.current = dataHash;
 
-    const chartData = apiCandlesToChartData(apiCandles);
-    
-    // Update candlestick data
-    candleSeriesRef.current.setData(chartData);
-
-    // Update volume data
-    const volumeData = chartData.map((candle) => ({
-      time: candle.time,
-      value: apiCandles?.find(c => c.time === (candle.time as number))?.volume || 1000,
-      color: candle.close >= candle.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-    }));
-
-    volumeSeriesRef.current.setData(volumeData);
-
-    // Only fit content on first data load
-    if (chartRef.current && chartData.length > 0) {
-      chartRef.current.timeScale().fitContent();
+    // Update the appropriate series
+    if (chartType === 'candles' && candleSeriesRef.current) {
+      const chartData = apiCandlesToChartData(apiCandles);
+      candleSeriesRef.current.setData(chartData);
+    } else if (chartType === 'line' && lineSeriesRef.current) {
+      const lineData = apiCandlesToLineData(apiCandles);
+      lineSeriesRef.current.setData(lineData);
     }
-  }, [apiCandles]);
 
-  // Handle timeframe change - reset chart data
-  useEffect(() => {
-    if (candleSeriesRef.current) {
-      candleSeriesRef.current.setData([]);
-    }
+    // Update volume
     if (volumeSeriesRef.current) {
-      volumeSeriesRef.current.setData([]);
+      const volumeData = apiCandles.map((c) => ({
+        time: c.time as Time,
+        value: c.volume || 1000,
+        color: c.close >= c.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+      }));
+      volumeSeriesRef.current.setData(volumeData);
     }
-    lastDataHash.current = ''; // Reset hash to allow new data
-  }, [selectedTimeframe]);
+
+    // Fit content
+    chartRef.current.timeScale().fitContent();
+  }, [apiCandles, chartType, selectedTimeframe]);
+
+  // Handle timeframe change
+  const handleTimeframeChange = (newTimeframe: string) => {
+    setSelectedTimeframe(newTimeframe);
+    lastDataHash.current = ''; // Force data reload
+    // Clear current data immediately
+    if (candleSeriesRef.current) candleSeriesRef.current.setData([]);
+    if (lineSeriesRef.current) lineSeriesRef.current.setData([]);
+    if (volumeSeriesRef.current) volumeSeriesRef.current.setData([]);
+  };
 
   return (
     <div className="w-full">
@@ -217,7 +239,7 @@ export function TradingChart({ tokenAddress, currentPrice }: TradingChartProps) 
                 'h-7 px-2 text-xs',
                 selectedTimeframe === tf.value && 'bg-gradient-fire'
               )}
-              onClick={() => setSelectedTimeframe(tf.value)}
+              onClick={() => handleTimeframeChange(tf.value)}
             >
               {tf.label}
             </Button>
