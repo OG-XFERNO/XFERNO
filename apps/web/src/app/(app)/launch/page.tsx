@@ -40,7 +40,11 @@ import {
   ShieldCheck,
   Shield,
   Lock,
+  Layers,
+  Network,
 } from 'lucide-react';
+import { LaunchModeSelector, type LaunchMode } from '@/components/launch/launch-mode-selector';
+import { NetworkSelector, networks } from '@/components/launch/network-selector';
 
 interface TokenFormData {
   // Step 1: Token Details
@@ -57,6 +61,10 @@ interface TokenFormData {
   telegram: string;
   discord: string;
   logoUrl: string;
+  // Step 4: Launch Mode & Networks
+  launchMode: LaunchMode;
+  baseNetwork: string;
+  splitNetworks: string[];
 }
 
 const initialFormData: TokenFormData = {
@@ -71,13 +79,17 @@ const initialFormData: TokenFormData = {
   telegram: '',
   discord: '',
   logoUrl: '',
+  launchMode: 'L1_SINGLE_CHAIN',
+  baseNetwork: 'ETH_SEPOLIA',
+  splitNetworks: [],
 };
 
 const steps = [
   { id: 1, title: 'Token Details', icon: Coins, description: 'Basic token information' },
   { id: 2, title: 'Tokenomics', icon: Sparkles, description: 'Supply & pricing' },
   { id: 3, title: 'Project Info', icon: Globe, description: 'Links & branding' },
-  { id: 4, title: 'Review & Launch', icon: Rocket, description: 'Confirm & deploy' },
+  { id: 4, title: 'Launch Mode', icon: Layers, description: 'Network & mode' },
+  { id: 5, title: 'Review & Launch', icon: Rocket, description: 'Confirm & deploy' },
 ];
 
 export default function LaunchPage() {
@@ -280,12 +292,26 @@ export default function LaunchPage() {
       }
     }
 
+    if (step === 4) {
+      if (!formData.baseNetwork) {
+        // Base network is required
+        return false;
+      }
+      // Split networks are required for multi-chain modes
+      if (
+        (formData.launchMode === 'L1_SPLIT_MULTICHAIN' || formData.launchMode === 'ZK_SPLIT_MULTICHAIN') &&
+        formData.splitNetworks.length === 0
+      ) {
+        return false;
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const nextStep = () => {
-    if (validateStep(currentStep) && currentStep < 4) {
+    if (validateStep(currentStep) && currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -629,8 +655,102 @@ export default function LaunchPage() {
                 </div>
               )}
 
-              {/* Step 4: Review & Launch */}
+              {/* Step 4: Launch Mode & Networks */}
               {currentStep === 4 && (
+                <div className="space-y-6">
+                  {/* Launch Mode Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Launch Mode</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Choose how you want to deploy your token
+                    </p>
+                    <LaunchModeSelector
+                      value={formData.launchMode}
+                      onChange={(mode) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          launchMode: mode,
+                          // Clear split networks if switching to single-chain mode
+                          splitNetworks: mode.includes('SINGLE') ? [] : prev.splitNetworks,
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  {/* Base Network Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Base Network</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Select the primary chain for your token launch
+                    </p>
+                    <NetworkSelector
+                      mode="single"
+                      selectedNetwork={formData.baseNetwork}
+                      onSelectNetwork={(networkId) => {
+                        setFormData(prev => ({ ...prev, baseNetwork: networkId }));
+                      }}
+                      showTestnets={true}
+                    />
+                  </div>
+
+                  {/* Split Networks (for multi-chain modes) */}
+                  {(formData.launchMode === 'L1_SPLIT_MULTICHAIN' || formData.launchMode === 'ZK_SPLIT_MULTICHAIN') && (
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Split Networks</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Select additional chains to deploy after graduation
+                      </p>
+                      <NetworkSelector
+                        mode="multi"
+                        baseNetwork={formData.baseNetwork}
+                        selectedNetworks={formData.splitNetworks}
+                        onSelectNetworks={(networkIds) => {
+                          setFormData(prev => ({ ...prev, splitNetworks: networkIds }));
+                        }}
+                        showTestnets={true}
+                      />
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Network className="w-4 h-4" />
+                        Deployment Summary
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Launch Mode</span>
+                          <span className="font-medium">
+                            {formData.launchMode === 'L1_SINGLE_CHAIN' && 'Standard Launch'}
+                            {formData.launchMode === 'L1_SPLIT_MULTICHAIN' && 'Multi-Chain Launch'}
+                            {formData.launchMode === 'ZK_SINGLE_CHAIN' && 'ZK Private Launch'}
+                            {formData.launchMode === 'ZK_SPLIT_MULTICHAIN' && 'ZK Multi-Chain'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Base Chain</span>
+                          <span className="font-medium">
+                            {networks.find(n => n.id === formData.baseNetwork)?.name || formData.baseNetwork}
+                          </span>
+                        </div>
+                        {formData.splitNetworks.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Split Chains</span>
+                            <span className="font-medium">
+                              {formData.splitNetworks.length} chain{formData.splitNetworks.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Step 5: Review & Launch */}
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   {/* Token Preview Card */}
                   <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -699,6 +819,49 @@ export default function LaunchPage() {
                     </Card>
                   </div>
 
+                  {/* Network Info */}
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Network className="w-4 h-4" />
+                        Deployment Networks
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Launch Mode</span>
+                          <Badge variant="outline">
+                            {formData.launchMode === 'L1_SINGLE_CHAIN' && 'Standard'}
+                            {formData.launchMode === 'L1_SPLIT_MULTICHAIN' && 'Multi-Chain'}
+                            {formData.launchMode === 'ZK_SINGLE_CHAIN' && 'ZK Private'}
+                            {formData.launchMode === 'ZK_SPLIT_MULTICHAIN' && 'ZK Multi-Chain'}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Base Chain</span>
+                          <span className="flex items-center gap-1">
+                            <span>{networks.find(n => n.id === formData.baseNetwork)?.icon}</span>
+                            {networks.find(n => n.id === formData.baseNetwork)?.name}
+                          </span>
+                        </div>
+                        {formData.splitNetworks.length > 0 && (
+                          <div className="flex justify-between items-start">
+                            <span className="text-muted-foreground">Split Chains</span>
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {formData.splitNetworks.map(nId => {
+                                const network = networks.find(n => n.id === nId);
+                                return (
+                                  <Badge key={nId} variant="secondary" className="text-xs">
+                                    {network?.icon} {network?.name}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* Links Preview */}
                   {(formData.website || formData.twitter || formData.telegram) && (
                     <div className="flex flex-wrap gap-2">
@@ -741,7 +904,7 @@ export default function LaunchPage() {
           )}
 
           {/* Chain Not Supported Warning */}
-          {!chainSupported && isConnected && currentStep === 4 && (
+          {!chainSupported && isConnected && currentStep === 5 && (
             <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
                 <AlertCircle className="w-4 h-4" />
@@ -765,7 +928,7 @@ export default function LaunchPage() {
               Back
             </Button>
 
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <Button onClick={nextStep} className="gap-2 bg-gradient-fire hover:opacity-90">
                 Next
                 <ArrowRight className="w-4 h-4" />

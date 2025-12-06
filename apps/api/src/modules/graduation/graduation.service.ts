@@ -1,7 +1,8 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { TokenStatus, DeploymentStatus } from '@prisma/client';
+import { TokenStatus, DeploymentStatus, LaunchMode } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { NetworksService } from '../networks/networks.service';
 
 export interface GraduationEligibility {
   eligible: boolean;
@@ -50,7 +51,10 @@ export class GraduationService {
     bridgeDeployment: '0.015',
   };
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly networksService: NetworksService,
+  ) {}
 
   /**
    * Check if a token is eligible for graduation
@@ -281,13 +285,32 @@ export class GraduationService {
         tokenId_networkId: { tokenId, networkId },
       },
       include: {
-        token: true,
+        token: {
+          include: {
+            creator: {
+              include: { wallets: true },
+            },
+          },
+        },
         network: true,
       },
     });
 
     if (!deployment) {
       throw new NotFoundException('Deployment not found');
+    }
+
+    // Get the network adapter
+    const adapter = this.networksService.getAdapter(networkId);
+    if (!adapter) {
+      await this.prisma.tokenDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          status: DeploymentStatus.FAILED,
+          errorMessage: `No adapter available for network ${deployment.network.name}`,
+        },
+      });
+      throw new BadRequestException(`No adapter available for network ${deployment.network.name}`);
     }
 
     // Update status to deploying
@@ -298,15 +321,115 @@ export class GraduationService {
 
     this.logger.log(`Deploying token ${tokenId} to network ${deployment.network.name}`);
 
-    // TODO: Actual deployment logic would go here
-    // This would call the network adapter to deploy the token
+    try {
+      // Deploy the token using the network adapter
+      const result = await adapter.deployToken({
+        name: deployment.token.name,
+        symbol: deployment.token.symbol,
+        decimals: deployment.token.decimals,
+        totalSupply: BigInt(deployment.token.totalSupply.toString()),
+        owner: deployment.token.creator.wallets[0]?.address || '',
+        isMintable: false,
+        isBurnable: true,
+      });
 
-    // For now, return placeholder
-    return {
-      deployed: false,
-      message: 'Deployment queued - actual deployment requires network adapter implementation',
-      deploymentId: deployment.id,
-    };
+      // Update deployment record with token address
+      await this.prisma.tokenDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          tokenAddress: result.tokenAddress,
+          deploymentTxHash: result.transactionHash,
+          status: DeploymentStatus.DEPLOYED,
+          deployedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`Token deployed at ${result.tokenAddress} on ${deployment.network.name}`);
+
+      return {
+        deployed: true,
+        tokenAddress: result.tokenAddress,
+        transactionHash: result.transactionHash,
+        deploymentId: deployment.id,
+      };
+    } catch (error) {
+      this.logger.error(`Deployment failed for ${tokenId} on ${networkId}:`, error);
+
+      await this.prisma.tokenDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          status: DeploymentStatus.FAILED,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Deploy DEX pool for a token on a network
+   */
+  async deployPool(tokenId: string, networkId: string) {
+    const deployment = await this.prisma.tokenDeployment.findUnique({
+      where: {
+        tokenId_networkId: { tokenId, networkId },
+      },
+      include: {
+        token: true,
+        network: true,
+      },
+    });
+
+    if (!deployment || !deployment.tokenAddress) {
+      throw new NotFoundException('Token not deployed on this network');
+    }
+
+    const adapter = this.networksService.getAdapter(networkId);
+    if (!adapter) {
+      throw new BadRequestException(`No adapter available for network ${deployment.network.name}`);
+    }
+
+    this.logger.log(`Creating pool for token ${tokenId} on ${deployment.network.name}`);
+
+    try {
+      // Calculate initial liquidity based on raised amount and split
+      const tokenData = await this.prisma.token.findUnique({
+        where: { id: tokenId },
+        select: { splitNetworkIds: true },
+      });
+      const totalNetworks = 1 + (tokenData?.splitNetworkIds.length || 0);
+
+      const raisedAmount = deployment.token.raisedAmount;
+      const liquidityPerNetwork = raisedAmount.div(totalNetworks);
+
+      // Deploy the pool
+      const result = await adapter.deployPool({
+        tokenAddress: deployment.tokenAddress,
+        baseAssetAddress: '0x0000000000000000000000000000000000000000', // Native token (WETH wrapper)
+        initialTokenAmount: BigInt(deployment.token.totalSupply.div(2).toString()), // 50% to pool
+        initialBaseAmount: BigInt(liquidityPerNetwork.mul(1e18).toString()),
+      });
+
+      // Update deployment with pool info
+      await this.prisma.tokenDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          poolAddress: result.poolAddress,
+        },
+      });
+
+      this.logger.log(`Pool created at ${result.poolAddress} on ${deployment.network.name}`);
+
+      return {
+        poolAddress: result.poolAddress,
+        lpTokenAddress: result.lpTokenAddress,
+        transactionHash: result.transactionHash,
+      };
+    } catch (error) {
+      this.logger.error(`Pool creation failed for ${tokenId} on ${networkId}:`, error);
+      throw error;
+    }
   }
 
   /**
