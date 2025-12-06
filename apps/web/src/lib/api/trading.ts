@@ -132,7 +132,9 @@ export function useTradeSocket(tokenAddress: string | undefined, chainId: number
     if (!tokenAddress) return;
 
     const newSocket = io(`${WS_BASE}/trading`, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'], // Start with polling, upgrade to websocket
+      reconnectionAttempts: 3,
+      timeout: 10000,
     });
 
     newSocket.on('connect', () => {

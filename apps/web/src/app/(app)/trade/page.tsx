@@ -375,9 +375,16 @@ export default function TradePage() {
       } else {
         // Check approval first
         if (needsApproval) {
+          console.log('Approval needed, requesting approval...');
           await handleApprove();
           return;
         }
+
+        console.log('Selling tokens:', {
+          token: tokenAddress,
+          tokenAmount: parsedAmount.toString(),
+          allowance: allowance?.toString(),
+        });
 
         // For now, set minEth to 0 (no slippage protection)
         // TODO: Use contract's getSellPrice to calculate expected ETH
@@ -390,8 +397,11 @@ export default function TradePage() {
           minEth,
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Trade failed:', err);
+      // Log more details about the error
+      if (err?.cause) console.error('Error cause:', err.cause);
+      if (err?.message) console.error('Error message:', err.message);
     }
   };
 

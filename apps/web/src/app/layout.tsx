@@ -54,12 +54,9 @@ export const metadata: Metadata = {
     creator: '@xferno',
   },
   icons: {
-    icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' },
-    ],
+    icon: { url: '/favicon.svg', type: 'image/svg+xml' },
     shortcut: '/favicon.svg',
-    apple: '/apple-touch-icon.png',
+    apple: '/favicon.svg',
   },
   manifest: '/manifest.json',
 };
