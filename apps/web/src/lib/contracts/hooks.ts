@@ -184,7 +184,8 @@ export function useTokenState(tokenAddress: Address | undefined) {
 }
 
 /**
- * Get current token price
+ * Get current token price from the bonding curve contract
+ * This is the authoritative price source
  */
 export function useCurrentPrice(tokenAddress: Address | undefined) {
   const chainId = useChainId();
@@ -197,7 +198,7 @@ export function useCurrentPrice(tokenAddress: Address | undefined) {
     args: tokenAddress ? [tokenAddress] : undefined,
     query: {
       enabled: !!addresses?.bondingCurve && !!tokenAddress,
-      refetchInterval: 5000, // Refetch every 5 seconds for real-time price
+      refetchInterval: 2000, // Poll every 2 seconds for real-time price
     },
   });
 }
