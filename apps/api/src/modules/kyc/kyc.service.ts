@@ -26,9 +26,8 @@ export interface AdminReviewDto {
 
 // Didit KYC types
 export interface DiditSession {
-  session_id: string;
-  url: string;
-  expires_at?: string;
+  sessionId: string;
+  verificationUrl: string;
 }
 
 export interface DiditSessionResponse {
@@ -124,8 +123,8 @@ export class KycService {
     if (existingSession?.externalId) {
       // Return existing session - user can continue verification
       return {
-        session_id: existingSession.externalId,
-        url: `https://verify.didit.me/session/${existingSession.externalId}`,
+        sessionId: existingSession.externalId,
+        verificationUrl: `https://verify.didit.me/session/${existingSession.externalId}`,
       };
     }
 
@@ -176,8 +175,8 @@ export class KycService {
       });
 
       return {
-        session_id: sessionData.session_id,
-        url: sessionData.url,
+        sessionId: sessionData.session_id,
+        verificationUrl: sessionData.url,
       };
     } catch (error) {
       this.logger.error('Failed to create Didit session:', error);

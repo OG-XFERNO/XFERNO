@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   HttpCode,
@@ -11,17 +12,25 @@ import {
   Headers,
   RawBodyRequest,
   Req,
+  Res,
   Logger,
 } from '@nestjs/common';
 import { KycService, SubmitKycDto, AdminReviewDto, DiditWebhookPayload } from './kyc.service';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
-import { Request as ExpressRequest } from 'express';
+import { Request as ExpressRequest, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('kyc')
 export class KycController {
   private readonly logger = new Logger(KycController.name);
+  private readonly appUrl: string;
 
-  constructor(private readonly kycService: KycService) {}
+  constructor(
+    private readonly kycService: KycService,
+    private readonly configService: ConfigService,
+  ) {
+    this.appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
+  }
 
   /**
    * Get KYC requirements and supported document types
@@ -46,8 +55,39 @@ export class KycController {
   }
 
   /**
-   * Didit webhook callback
-   * Receives verification status updates from Didit
+   * Didit callback redirect (GET)
+   * User is redirected here after completing verification on Didit
+   */
+  @Get('didit/webhook')
+  async handleDiditCallback(
+    @Query('verificationSessionId') sessionId: string,
+    @Query('status') status: string,
+    @Res() res: Response,
+  ) {
+    this.logger.log(`Didit callback redirect: sessionId=${sessionId}, status=${status}`);
+    
+    // Process the verification result if we have the session ID
+    if (sessionId && status) {
+      try {
+        // Create a minimal webhook payload from the redirect params
+        const payload: DiditWebhookPayload = {
+          session_id: sessionId,
+          status: status as any,
+        };
+        await this.kycService.handleDiditWebhook(payload);
+      } catch (error) {
+        this.logger.error('Error processing Didit callback:', error);
+      }
+    }
+    
+    // Redirect user back to KYC page with status
+    const redirectUrl = `${this.appUrl}/kyc?status=${status?.toLowerCase() || 'complete'}`;
+    return res.redirect(redirectUrl);
+  }
+
+  /**
+   * Didit webhook callback (POST)
+   * Receives verification status updates from Didit server-to-server
    */
   @Post('didit/webhook')
   @HttpCode(HttpStatus.OK)
