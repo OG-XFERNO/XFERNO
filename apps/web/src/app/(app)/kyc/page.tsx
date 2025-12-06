@@ -2,18 +2,9 @@
 
 import { useState } from 'react';
 import { useAuth, useKycStatus } from '@/lib/auth';
-import * as authApi from '@/lib/auth/api';
+import { createDiditSession } from '@/lib/auth/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   Shield,
@@ -24,56 +15,33 @@ import {
   XCircle,
   Loader2,
   AlertTriangle,
+  ExternalLink,
+  Fingerprint,
+  Camera,
+  FileCheck,
 } from 'lucide-react';
-
-const documentTypes = [
-  { value: 'passport', label: 'Passport' },
-  { value: 'driver_license', label: "Driver's License" },
-  { value: 'id_card', label: 'National ID Card' },
-];
-
-const countries = [
-  { value: 'US', label: 'United States' },
-  { value: 'UK', label: 'United Kingdom' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'JP', label: 'Japan' },
-  { value: 'KR', label: 'South Korea' },
-  { value: 'SG', label: 'Singapore' },
-  { value: 'OTHER', label: 'Other' },
-];
 
 export default function KycPage() {
   const { user, isAuthenticated } = useAuth();
   const { status, details, isLoading: kycLoading, isVerified, isPending, isRejected } = useKycStatus();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStartingKyc, setIsStartingKyc] = useState(false);
 
-  // Form state
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [documentType, setDocumentType] = useState<'passport' | 'driver_license' | 'id_card'>('passport');
-  const [documentCountry, setDocumentCountry] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleStartKyc = async () => {
+    setIsStartingKyc(true);
 
     try {
-      await authApi.submitKyc({
-        firstName,
-        lastName,
-        dateOfBirth,
-        documentType,
-        documentCountry,
-      });
-      toast.success('KYC verification submitted successfully!');
+      const result = await createDiditSession();
+      
+      // Redirect to Didit verification page
+      if (result.verificationUrl) {
+        window.location.href = result.verificationUrl;
+      } else {
+        toast.error('Failed to get verification URL');
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to submit KYC');
+      toast.error(err instanceof Error ? err.message : 'Failed to start KYC verification');
     } finally {
-      setIsSubmitting(false);
+      setIsStartingKyc(false);
     }
   };
 
@@ -191,92 +159,107 @@ export default function KycPage() {
         </CardContent>
       </Card>
 
-      {/* Verification Form */}
+      {/* Start KYC Verification */}
       {!isVerified && !isPending && (
         <Card>
           <CardHeader>
-            <CardTitle>Submit Verification</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Fingerprint className="h-5 w-5 text-orange-500" />
+              Identity Verification
+            </CardTitle>
             <CardDescription>
-              Provide your personal information for identity verification.
+              Complete a quick identity check powered by Didit. This process takes about 2-3 minutes.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="John"
-                    required
-                  />
+          <CardContent className="space-y-6">
+            {/* How it works */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-sm text-muted-foreground">How it works:</h4>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-orange-500 font-semibold text-sm">1</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Take a selfie</p>
+                    <p className="text-xs text-muted-foreground">Quick face capture for identity matching</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Doe"
-                    required
-                  />
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-orange-500 font-semibold text-sm">2</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Scan your ID</p>
+                    <p className="text-xs text-muted-foreground">Passport, driver&apos;s license, or national ID</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-orange-500 font-semibold text-sm">3</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Get verified</p>
+                    <p className="text-xs text-muted-foreground">Most verifications complete in under 5 minutes</p>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                <Input
-                  id="dateOfBirth"
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  required
-                />
-              </div>
+            {/* Requirements */}
+            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <h4 className="font-medium text-blue-400 mb-2 flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                What you&apos;ll need
+              </h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• A valid government-issued ID (passport, driver&apos;s license, or ID card)</li>
+                <li>• A device with a camera (phone or computer)</li>
+                <li>• Good lighting for clear photos</li>
+              </ul>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="documentType">Document Type</Label>
-                <Select value={documentType} onValueChange={(v) => setDocumentType(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select document type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {documentTypes.map((doc) => (
-                      <SelectItem key={doc.value} value={doc.value}>
-                        {doc.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Security note */}
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+              <h4 className="font-medium text-green-400 mb-2 flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Your data is secure
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Verification is handled securely by Didit. Your documents are encrypted and only used for identity verification.
+                We never store your raw document images.
+              </p>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="documentCountry">Document Country</Label>
-                <Select value={documentCountry} onValueChange={setDocumentCountry}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country.value} value={country.value}>
-                        {country.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <Button
+              onClick={handleStartKyc}
+              className="w-full bg-gradient-fire hover:opacity-90 h-12 text-lg"
+              disabled={isStartingKyc}
+            >
+              {isStartingKyc ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Starting Verification...
+                </>
+              ) : (
+                <>
+                  <Fingerprint className="mr-2 h-5 w-5" />
+                  Start Identity Verification
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
 
-              <Button
-                type="submit"
-                className="w-full bg-gradient-fire hover:opacity-90"
-                disabled={isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit Verification
-              </Button>
-            </form>
+            <p className="text-xs text-center text-muted-foreground">
+              By proceeding, you agree to Didit&apos;s{' '}
+              <a href="https://didit.me/privacy" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">
+                Privacy Policy
+              </a>{' '}
+              and{' '}
+              <a href="https://didit.me/terms" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">
+                Terms of Service
+              </a>
+            </p>
           </CardContent>
         </Card>
       )}
