@@ -179,3 +179,33 @@ export function useKycStatus() {
     requiresKyc: user?.kycStatus === 'NONE',
   };
 }
+
+// Hook for account type checks
+export function useAccountType() {
+  const { user, isAuthenticated } = useAuth();
+  
+  return {
+    accountType: user?.accountType || null,
+    isSocial: user?.accountType === 'SOCIAL',
+    isTrader: user?.accountType === 'TRADER',
+    isCreator: user?.accountType === 'CREATOR',
+    canTrade: user?.accountType === 'TRADER' || user?.accountType === 'CREATOR',
+    canLaunch: user?.accountType === 'CREATOR',
+    isAuthenticated,
+  };
+}
+
+// Hook for role checks
+export function useRole() {
+  const { user, isAuthenticated } = useAuth();
+  
+  return {
+    role: user?.role || null,
+    isUser: user?.role === 'USER',
+    isCreator: user?.role === 'CREATOR',
+    isAdmin: user?.role === 'ADMIN',
+    isSuperAdmin: user?.role === 'SUPER_ADMIN',
+    hasAdminAccess: user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN',
+    isAuthenticated,
+  };
+}

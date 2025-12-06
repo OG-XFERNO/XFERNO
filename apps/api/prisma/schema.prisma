@@ -121,6 +121,7 @@ model User {
   twitterId        String?     @unique
   kycStatus        KYCStatus   @default(NONE)
   kycVerifiedAt    DateTime?
+  kycBannerDismissed Boolean   @default(false)
   role             UserRole    @default(USER)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt

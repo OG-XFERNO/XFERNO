@@ -12,6 +12,7 @@ export interface User {
   role: UserRole;
   accountType: AccountType;
   kycStatus: KYCStatus;
+  kycBannerDismissed?: boolean;
   emailVerified: boolean;
   twoFactorEnabled: boolean;
   wallets: Wallet[];

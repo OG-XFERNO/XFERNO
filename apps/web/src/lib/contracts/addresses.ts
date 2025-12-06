@@ -32,11 +32,11 @@ export const CHAIN_CONFIGS: Record<number, ChainConfig> = {
     creationFee: BigInt('10000000000000000'), // 0.01 ETH
     blockExplorer: 'https://etherscan.io',
   },
-  // Sepolia Testnet - DEPLOYED!
+  // Sepolia Testnet - V2 DEPLOYED!
   11155111: {
     addresses: {
-      tokenFactory: '0x9c78920aAF6f7686438613b05d5921155f989884' as Address,
-      bondingCurve: '0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751' as Address,
+      tokenFactory: '0x822f72301756D054d3F3F4834F1c0A1A03A95716' as Address,
+      bondingCurve: '0x66C9032Cc141Ce85d5f5D497e452c646548dEd2F' as Address,
     },
     creationFee: BigInt('1000000000000000'), // 0.001 ETH
     blockExplorer: 'https://sepolia.etherscan.io',

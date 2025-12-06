@@ -186,6 +186,59 @@ export class KycService {
   }
 
   /**
+   * Handle Didit callback redirect
+   * Called when user is redirected back from Didit after verification
+   */
+  async handleDiditCallback(sessionId: string, status: string): Promise<void> {
+    this.logger.log(`Processing Didit callback: sessionId=${sessionId}, status=${status}`);
+
+    // Find the verification by external ID
+    const verification = await this.prisma.kycVerification.findFirst({
+      where: { externalId: sessionId },
+    });
+
+    if (!verification) {
+      this.logger.warn(`No verification found for session: ${sessionId}`);
+      return;
+    }
+
+    // Map Didit status to our status
+    const statusMap: Record<string, KYCStatus> = {
+      'Approved': KYCStatus.VERIFIED,
+      'approved': KYCStatus.VERIFIED,
+      'Declined': KYCStatus.REJECTED,
+      'declined': KYCStatus.REJECTED,
+    };
+
+    const newStatus = statusMap[status];
+    if (!newStatus) {
+      this.logger.log(`Status ${status} doesn't require update`);
+      return;
+    }
+
+    // Update verification record
+    await this.prisma.kycVerification.update({
+      where: { id: verification.id },
+      data: {
+        status: newStatus,
+        verifiedAt: newStatus === KYCStatus.VERIFIED ? new Date() : null,
+        rejectionReason: newStatus === KYCStatus.REJECTED ? 'Verification declined' : null,
+      },
+    });
+
+    // Update user status
+    await this.prisma.user.update({
+      where: { id: verification.userId },
+      data: {
+        kycStatus: newStatus,
+        kycVerifiedAt: newStatus === KYCStatus.VERIFIED ? new Date() : null,
+      },
+    });
+
+    this.logger.log(`KYC status updated for user ${verification.userId}: ${newStatus}`);
+  }
+
+  /**
    * Verify Didit webhook signature
    */
   verifyWebhookSignature(payload: string, signature: string): boolean {
@@ -320,6 +373,83 @@ export class KycService {
       this.logger.error('Failed to get Didit session status:', error);
       throw new BadRequestException('Failed to get session status');
     }
+  }
+
+  /**
+   * Refresh KYC status by polling Didit API
+   * Use this when webhook isn't working
+   */
+  async refreshKycStatus(userId: string): Promise<{ status: string; updated: boolean }> {
+    // Find pending verification for this user
+    const verification = await this.prisma.kycVerification.findFirst({
+      where: {
+        userId,
+        provider: 'didit',
+        status: KYCStatus.PENDING,
+      },
+    });
+
+    if (!verification?.externalId) {
+      return { status: 'no_pending_verification', updated: false };
+    }
+
+    try {
+      // Poll Didit API for current status
+      const diditStatus = await this.getDiditSessionStatus(verification.externalId);
+      this.logger.log(`Didit status for ${verification.externalId}: ${JSON.stringify(diditStatus)}`);
+
+      // Map Didit status to our status
+      const statusMap: Record<string, KYCStatus> = {
+        'Approved': KYCStatus.VERIFIED,
+        'approved': KYCStatus.VERIFIED,
+        'Declined': KYCStatus.REJECTED,
+        'declined': KYCStatus.REJECTED,
+        'Pending': KYCStatus.PENDING,
+        'pending': KYCStatus.PENDING,
+      };
+
+      const newStatus = statusMap[diditStatus.status] || KYCStatus.PENDING;
+
+      if (newStatus !== KYCStatus.PENDING) {
+        // Update verification record
+        await this.prisma.kycVerification.update({
+          where: { id: verification.id },
+          data: {
+            status: newStatus,
+            verifiedAt: newStatus === KYCStatus.VERIFIED ? new Date() : null,
+            rejectionReason: newStatus === KYCStatus.REJECTED ? (diditStatus.rejection_reason || 'Verification declined') : null,
+          },
+        });
+
+        // Update user status
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            kycStatus: newStatus,
+            kycVerifiedAt: newStatus === KYCStatus.VERIFIED ? new Date() : null,
+          },
+        });
+
+        this.logger.log(`KYC status refreshed for user ${userId}: ${newStatus}`);
+        return { status: newStatus, updated: true };
+      }
+
+      return { status: newStatus, updated: false };
+    } catch (error) {
+      this.logger.error('Failed to refresh KYC status:', error);
+      throw new BadRequestException('Failed to refresh verification status');
+    }
+  }
+
+  /**
+   * Dismiss the KYC verified banner for a user
+   */
+  async dismissKycBanner(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { kycBannerDismissed: true },
+    });
+    return { success: true };
   }
 
   /**

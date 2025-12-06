@@ -69,12 +69,7 @@ export class KycController {
     // Process the verification result if we have the session ID
     if (sessionId && status) {
       try {
-        // Create a minimal webhook payload from the redirect params
-        const payload: DiditWebhookPayload = {
-          session_id: sessionId,
-          status: status as any,
-        };
-        await this.kycService.handleDiditWebhook(payload);
+        await this.kycService.handleDiditCallback(sessionId, status);
       } catch (error) {
         this.logger.error('Error processing Didit callback:', error);
       }
@@ -107,6 +102,17 @@ export class KycController {
     
     await this.kycService.handleDiditWebhook(payload, rawBody, sig);
     return { success: true, message: 'Webhook processed' };
+  }
+
+  /**
+   * Refresh KYC status by polling Didit API
+   * Use when webhook isn't working
+   */
+  @Post('refresh')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async refreshStatus(@Request() req: any) {
+    return this.kycService.refreshKycStatus(req.user.id);
   }
 
   /**
@@ -146,6 +152,16 @@ export class KycController {
   @UseGuards(JwtAuthGuard)
   async getPending(@Request() req: any) {
     return this.kycService.getPendingVerifications(req.user.id);
+  }
+
+  /**
+   * Dismiss the KYC verified banner
+   */
+  @Post('banner/dismiss')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async dismissBanner(@Request() req: any) {
+    return this.kycService.dismissKycBanner(req.user.id);
   }
 
   /**

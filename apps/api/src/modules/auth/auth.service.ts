@@ -108,17 +108,33 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException('This email is already registered. Please sign in or use a different email.');
     }
 
     // Check if username is taken
     if (data.username) {
+      // Validate username format
+      if (!/^[a-zA-Z0-9_]+$/.test(data.username)) {
+        throw new BadRequestException('Username can only contain letters, numbers, and underscores.');
+      }
+      if (data.username.length < 3) {
+        throw new BadRequestException('Username must be at least 3 characters long.');
+      }
+      if (data.username.length > 30) {
+        throw new BadRequestException('Username cannot be longer than 30 characters.');
+      }
+      
       const existingUsername = await this.prisma.user.findUnique({
         where: { username: data.username.toLowerCase() },
       });
       if (existingUsername) {
-        throw new ConflictException('Username already taken');
+        throw new ConflictException('This username is already taken. Please choose a different username.');
       }
+    }
+
+    // Validate password
+    if (!data.password || data.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long.');
     }
 
     // Hash password
@@ -297,13 +313,13 @@ export class AuthService {
     });
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid email or password. Please check your credentials and try again.');
     }
 
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
 
     if (!isValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid email or password. Please check your credentials and try again.');
     }
 
     // Check if email is verified
@@ -355,7 +371,7 @@ export class AuthService {
     );
 
     if (!isValidSignature) {
-      throw new UnauthorizedException('Invalid signature');
+      throw new UnauthorizedException('Wallet signature verification failed. Please try signing again.');
     }
 
     // Find or create user by wallet
@@ -466,7 +482,10 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       bio: user.bio,
       role: user.role,
+      accountType: user.accountType,
       kycStatus: user.kycStatus,
+      kycBannerDismissed: user.kycBannerDismissed,
+      emailVerified: user.emailVerified,
       twoFactorEnabled: user.twoFactorEnabled,
       wallets: user.wallets,
       stats: {
@@ -566,6 +585,52 @@ export class AuthService {
     return this.prisma.wallet.delete({
       where: { id: walletId },
     });
+  }
+
+  /**
+   * Upgrade user account type
+   * Users can upgrade: SOCIAL -> TRADER -> CREATOR
+   * Cannot downgrade account type
+   */
+  async upgradeAccountType(userId: string, newAccountType: 'SOCIAL' | 'TRADER' | 'CREATOR') {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Define account type hierarchy
+    const hierarchy = { SOCIAL: 1, TRADER: 2, CREATOR: 3 };
+    const currentLevel = hierarchy[user.accountType] || 1;
+    const newLevel = hierarchy[newAccountType];
+
+    if (newLevel < currentLevel) {
+      throw new BadRequestException('Cannot downgrade account type. Please contact support.');
+    }
+
+    if (newLevel === currentLevel) {
+      throw new BadRequestException(`You already have a ${newAccountType} account.`);
+    }
+
+    // Update account type and role
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        accountType: newAccountType,
+        role: newAccountType === 'CREATOR' ? 'CREATOR' : user.role,
+      },
+    });
+
+    this.logger.log(`User ${user.email} upgraded from ${user.accountType} to ${newAccountType}`);
+
+    return {
+      success: true,
+      message: `Account upgraded to ${newAccountType}`,
+      accountType: updatedUser.accountType,
+      requiresKyc: newAccountType === 'TRADER' || newAccountType === 'CREATOR',
+    };
   }
 
   /**

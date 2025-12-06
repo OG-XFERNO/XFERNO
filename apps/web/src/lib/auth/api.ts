@@ -103,6 +103,18 @@ export async function removeWallet(walletId: string): Promise<void> {
   });
 }
 
+export async function upgradeAccountType(accountType: 'SOCIAL' | 'TRADER' | 'CREATOR'): Promise<{
+  success: boolean;
+  message: string;
+  accountType: string;
+  requiresKyc: boolean;
+}> {
+  return fetchApi('/api/auth/account-type', {
+    method: 'PUT',
+    body: JSON.stringify({ accountType }),
+  });
+}
+
 // ========== KYC API ==========
 
 export async function getKycRequirements(): Promise<KycRequirements> {
@@ -129,6 +141,21 @@ export async function createDiditSession(): Promise<{
   verificationUrl: string;
 }> {
   return fetchApi('/api/kyc/didit/session', {
+    method: 'POST',
+  });
+}
+
+export async function refreshKycStatus(): Promise<{
+  status: string;
+  updated: boolean;
+}> {
+  return fetchApi('/api/kyc/refresh', {
+    method: 'POST',
+  });
+}
+
+export async function dismissKycBanner(): Promise<{ success: boolean }> {
+  return fetchApi('/api/kyc/banner/dismiss', {
     method: 'POST',
   });
 }

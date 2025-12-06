@@ -7,13 +7,24 @@ import { cn } from '@/lib/utils';
 import { ConnectButton } from '@/components/wallet/connect-button';
 import { NetworkStatus } from '@/components/wallet/network-status';
 import { UserMenu } from '@/components/auth/user-menu';
-import { Menu, X } from 'lucide-react';
+import { KycBanner } from '@/components/auth/kyc-banner';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { Menu, X, LogIn, Rocket } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuth, useAccountType } from '@/lib/auth';
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  requiresAuth?: boolean;
+  requiresCreator?: boolean;
+}
+
+const navItems: NavItem[] = [
+  { href: '/dashboard', label: 'Dashboard', requiresAuth: true },
   { href: '/tokens', label: 'Explore' },
-  { href: '/launch', label: 'Launch' },
+  { href: '/launch', label: 'Launch', requiresAuth: true, requiresCreator: true },
   { href: '/trade', label: 'Trade' },
   { href: '/docs', label: 'Docs' },
 ];
@@ -21,6 +32,16 @@ const navItems = [
 export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const { canLaunch } = useAccountType();
+
+  // Filter nav items based on auth and account type
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.requiresAuth && !isAuthenticated) return false;
+    if (item.requiresCreator && !canLaunch) return false;
+    return true;
+  });
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
@@ -39,10 +60,10 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href as any}
               className={cn(
                 'text-sm font-medium transition-colors hover:text-foreground',
                 pathname === item.href
@@ -59,7 +80,17 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           <NetworkStatus />
           <ConnectButton />
-          <UserMenu />
+          {isAuthenticated ? (
+            <UserMenu />
+          ) : (
+            <Button 
+              onClick={() => setAuthModalOpen(true)}
+              className="bg-gradient-fire hover:opacity-90"
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Login
+            </Button>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -81,10 +112,10 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/40 bg-background">
           <nav className="container py-4 flex flex-col gap-4">
-            {navItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href as any}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
                   'text-sm font-medium transition-colors hover:text-foreground py-2',
@@ -96,12 +127,30 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <div className="pt-4 border-t border-border/40">
+            <div className="pt-4 border-t border-border/40 flex flex-col gap-3">
               <ConnectButton />
+              {!isAuthenticated && (
+                <Button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setAuthModalOpen(true);
+                  }}
+                  className="bg-gradient-fire hover:opacity-90 w-full"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Login / Register
+                </Button>
+              )}
             </div>
           </nav>
         </div>
       )}
+
+      {/* KYC Status Banner */}
+      <KycBanner />
+
+      {/* Auth Modal */}
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
     </header>
   );
 }

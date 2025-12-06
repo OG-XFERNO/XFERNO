@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth, useKycStatus } from '@/lib/auth';
-import { createDiditSession } from '@/lib/auth/api';
+import { createDiditSession, refreshKycStatus } from '@/lib/auth/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -19,12 +19,14 @@ import {
   Fingerprint,
   Camera,
   FileCheck,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function KycPage() {
   const { user, isAuthenticated } = useAuth();
   const { status, details, isLoading: kycLoading, isVerified, isPending, isRejected } = useKycStatus();
   const [isStartingKyc, setIsStartingKyc] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleStartKyc = async () => {
     setIsStartingKyc(true);
@@ -42,6 +44,24 @@ export default function KycPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to start KYC verification');
     } finally {
       setIsStartingKyc(false);
+    }
+  };
+
+  const handleRefreshStatus = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await refreshKycStatus();
+      if (result.updated) {
+        toast.success(`Verification status updated: ${result.status}`);
+        // Reload page to show new status
+        window.location.reload();
+      } else {
+        toast.info('Status unchanged - still pending');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to refresh status');
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -96,11 +116,30 @@ export default function KycPage() {
           {isPending && (
             <div className="flex items-start gap-4 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
               <Clock className="h-6 w-6 text-yellow-500 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-yellow-400">Pending Review</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your verification is being reviewed. This usually takes 1-2 business days.
+                <p className="text-sm text-muted-foreground mb-3">
+                  Your verification is being reviewed. This can take up to 30 minutes.
                 </p>
+                <Button
+                  onClick={handleRefreshStatus}
+                  variant="outline"
+                  size="sm"
+                  disabled={isRefreshing}
+                  className="border-yellow-500/50 hover:bg-yellow-500/10"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh Status
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}

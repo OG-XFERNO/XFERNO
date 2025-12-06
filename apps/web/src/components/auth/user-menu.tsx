@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAuth, useKycStatus } from '@/lib/auth';
+import { useAuth, useKycStatus, useAccountType } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ import {
   Shield,
   ShieldCheck,
   ShieldAlert,
-  Clock,
   Rocket,
   ChevronDown,
 } from 'lucide-react';
@@ -31,6 +30,7 @@ import {
 export function UserMenu() {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const { status: kycStatus, isVerified } = useKycStatus();
+  const { canLaunch } = useAccountType();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   if (isLoading) {
@@ -57,29 +57,17 @@ export function UserMenu() {
     );
   }
 
-  const getKycIcon = () => {
+  const getKycShield = (size: 'sm' | 'md' = 'sm') => {
+    const sizeClass = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
     switch (kycStatus) {
       case 'VERIFIED':
-        return <ShieldCheck className="h-4 w-4 text-green-500" />;
+        return <ShieldCheck className={`${sizeClass} text-green-500`} />;
       case 'PENDING':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
+        return <Shield className={`${sizeClass} text-yellow-500`} />;
       case 'REJECTED':
-        return <ShieldAlert className="h-4 w-4 text-red-500" />;
+        return <ShieldAlert className={`${sizeClass} text-red-500`} />;
       default:
-        return <Shield className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const getKycBadge = () => {
-    switch (kycStatus) {
-      case 'VERIFIED':
-        return <Badge variant="default" className="bg-green-500/20 text-green-400 text-xs">Verified</Badge>;
-      case 'PENDING':
-        return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 text-xs">Pending</Badge>;
-      case 'REJECTED':
-        return <Badge variant="destructive" className="text-xs">Rejected</Badge>;
-      default:
-        return null;
+        return <ShieldAlert className={`${sizeClass} text-red-500`} />;
     }
   };
 
@@ -101,12 +89,10 @@ export function UserMenu() {
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden md:flex flex-col items-start text-sm">
-            <span className="font-medium">
-              {user?.displayName || user?.username || 'User'}
-            </span>
-            {getKycBadge()}
-          </div>
+          {getKycShield('sm')}
+          <span className="hidden md:block text-sm font-medium">
+            {user?.displayName || user?.username || 'User'}
+          </span>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
@@ -137,7 +123,7 @@ export function UserMenu() {
           </Link>
         </DropdownMenuItem>
 
-        {isVerified && (
+        {canLaunch && isVerified && (
           <DropdownMenuItem asChild>
             <Link href="/launch" className="cursor-pointer">
               <Rocket className="mr-2 h-4 w-4" />
@@ -151,7 +137,7 @@ export function UserMenu() {
         <DropdownMenuItem asChild>
           <Link href="/kyc" className="cursor-pointer flex items-center justify-between">
             <div className="flex items-center">
-              {getKycIcon()}
+              {getKycShield('sm')}
               <span className="ml-2">KYC Status</span>
             </div>
             {kycStatus === 'NONE' && (

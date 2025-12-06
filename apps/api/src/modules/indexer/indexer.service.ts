@@ -27,10 +27,10 @@ const TOKEN_GRADUATED_EVENT = parseAbiItem(
   'event TokenGraduated(address indexed token, address indexed dexPool, uint256 ethLiquidity, uint256 tokenLiquidity)'
 );
 
-// Contract addresses by chain
+// Contract addresses by chain - V2
 const CONTRACTS: Record<number, { bondingCurve: `0x${string}` }> = {
   11155111: {
-    bondingCurve: '0x5e32fb2100EED4FdAe0f65ecB7dC30291d9Fc751',
+    bondingCurve: '0x66C9032Cc141Ce85d5f5D497e452c646548dEd2F',
   },
 };
 

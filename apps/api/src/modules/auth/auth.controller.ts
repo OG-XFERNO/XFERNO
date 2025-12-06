@@ -78,4 +78,13 @@ export class AuthController {
   async removeWallet(@Request() req: any, @Param('walletId') walletId: string) {
     return this.authService.removeWallet(req.user.id, walletId);
   }
+
+  @Put('account-type')
+  @UseGuards(JwtAuthGuard)
+  async upgradeAccountType(
+    @Request() req: any,
+    @Body() body: { accountType: 'SOCIAL' | 'TRADER' | 'CREATOR' },
+  ) {
+    return this.authService.upgradeAccountType(req.user.id, body.accountType);
+  }
 }

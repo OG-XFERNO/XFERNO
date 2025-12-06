@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAccount, useChainId } from 'wagmi';
 import { formatEther } from 'viem';
 import {
@@ -9,6 +11,7 @@ import {
   isChainSupported,
   getExplorerTxUrl,
 } from '@/lib/contracts';
+import { useAuth, useAccountType, useKycStatus } from '@/lib/auth';
 import { txToast, dismissToast, toastSuccess, toastError } from '@/lib/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -33,6 +36,10 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
+  ShieldAlert,
+  ShieldCheck,
+  Shield,
+  Lock,
 } from 'lucide-react';
 
 interface TokenFormData {
@@ -74,10 +81,123 @@ const steps = [
 ];
 
 export default function LaunchPage() {
+  const router = useRouter();
   const { isConnected } = useAccount();
   const chainId = useChainId();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { canLaunch, accountType } = useAccountType();
+  const { isVerified, isPending: kycPending } = useKycStatus();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<TokenFormData>(initialFormData);
+
+  // Access control - redirect non-authenticated users
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  // Show access denied for non-creator accounts
+  if (!authLoading && isAuthenticated && !canLaunch) {
+    return (
+      <div className="container py-8">
+        <Card className="max-w-2xl mx-auto border-red-500/20 bg-red-500/5">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-4 rounded-full bg-red-500/10">
+              <Lock className="h-12 w-12 text-red-500" />
+            </div>
+            <CardTitle className="text-2xl">Creator Account Required</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Only Creator accounts can launch new tokens on XFERNO.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Your current account type is <Badge variant="outline" className="ml-1">{accountType}</Badge>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              To launch tokens, you need to upgrade to a Creator account. Creator accounts have access to:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Launch new tokens with custom bonding curves</li>
+              <li>• Create public and private communities</li>
+              <li>• Start live streams for your community</li>
+              <li>• Full trading capabilities</li>
+            </ul>
+            <div className="flex justify-center gap-3 pt-4">
+              <Link href="/settings">
+                <Button className="bg-gradient-fire hover:opacity-90">
+                  <Rocket className="mr-2 h-4 w-4" />
+                  Upgrade to Creator
+                </Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">
+                  Back to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show KYC required message if not verified
+  if (!authLoading && isAuthenticated && canLaunch && !isVerified) {
+    return (
+      <div className="container py-8">
+        <Card className="max-w-2xl mx-auto border-yellow-500/20 bg-yellow-500/5">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-4 rounded-full bg-yellow-500/10">
+              {kycPending ? (
+                <Shield className="h-12 w-12 text-yellow-500" />
+              ) : (
+                <ShieldAlert className="h-12 w-12 text-yellow-500" />
+              )}
+            </div>
+            <CardTitle className="text-2xl">
+              {kycPending ? 'KYC Verification Pending' : 'KYC Verification Required'}
+            </CardTitle>
+            <CardDescription className="text-base mt-2">
+              {kycPending 
+                ? 'Your identity verification is being reviewed. This can take up to 30 minutes.'
+                : 'You need to complete identity verification before launching tokens.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              KYC verification helps us maintain a safe and compliant platform for all users.
+            </p>
+            <div className="flex justify-center gap-3 pt-4">
+              {!kycPending && (
+                <Link href="/kyc">
+                  <Button className="bg-gradient-fire hover:opacity-90">
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Start Verification
+                  </Button>
+                </Link>
+              )}
+              <Link href="/dashboard">
+                <Button variant="outline">
+                  Back to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="container py-8 flex justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
   const [errors, setErrors] = useState<Partial<TokenFormData>>({});
   const [launchSuccess, setLaunchSuccess] = useState(false);
 
