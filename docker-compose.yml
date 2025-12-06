@@ -62,6 +62,10 @@ services:
       # Blockchain RPC URLs
       SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
       SEPOLIA_WS_URL: ${SEPOLIA_WS_URL:-wss://ethereum-sepolia-rpc.publicnode.com}
+      # Didit KYC
+      DIDIT_APP_ID: ${DIDIT_APP_ID:-}
+      DIDIT_API_KEY: ${DIDIT_API_KEY:-}
+      DIDIT_API_URL: ${DIDIT_API_URL:-https://apx.didit.me/v2}
     ports:
       - "${API_PORT:-3002}:3002"
     volumes:

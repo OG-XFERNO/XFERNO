@@ -44,24 +44,24 @@ export interface DiditWebhookPayload {
 
 @Injectable()
 export class KycService {
-  private readonly diditClientId: string;
-  private readonly diditClientSecret: string;
+  private readonly diditAppId: string;
+  private readonly diditApiKey: string;
   private readonly diditApiUrl: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.diditClientId = this.configService.get<string>('DIDIT_CLIENT_ID', '');
-    this.diditClientSecret = this.configService.get<string>('DIDIT_CLIENT_SECRET', '');
-    this.diditApiUrl = this.configService.get<string>('DIDIT_API_URL', 'https://api.didit.me');
+    this.diditAppId = this.configService.get<string>('DIDIT_APP_ID', '');
+    this.diditApiKey = this.configService.get<string>('DIDIT_API_KEY', '');
+    this.diditApiUrl = this.configService.get<string>('DIDIT_API_URL', 'https://apx.didit.me/v2');
   }
 
   /**
    * Check if Didit is configured
    */
   isDiditConfigured(): boolean {
-    return !!this.diditClientId && !!this.diditClientSecret;
+    return !!this.diditAppId && !!this.diditApiKey;
   }
 
   /**
