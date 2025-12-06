@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { KYCStatus, UserRole } from '@prisma/client';
 
@@ -20,9 +21,123 @@ export interface AdminReviewDto {
   rejectionReason?: string;
 }
 
+// Didit KYC types
+export interface DiditSession {
+  sessionId: string;
+  sessionUrl: string;
+  expiresAt: string;
+}
+
+export interface DiditWebhookPayload {
+  sessionId: string;
+  status: 'approved' | 'rejected' | 'pending';
+  userId?: string;
+  reason?: string;
+  verificationData?: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    documentType?: string;
+    documentCountry?: string;
+  };
+}
+
 @Injectable()
 export class KycService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly diditClientId: string;
+  private readonly diditClientSecret: string;
+  private readonly diditApiUrl: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    this.diditClientId = this.configService.get<string>('DIDIT_CLIENT_ID', '');
+    this.diditClientSecret = this.configService.get<string>('DIDIT_CLIENT_SECRET', '');
+    this.diditApiUrl = this.configService.get<string>('DIDIT_API_URL', 'https://api.didit.me');
+  }
+
+  /**
+   * Check if Didit is configured
+   */
+  isDiditConfigured(): boolean {
+    return !!this.diditClientId && !!this.diditClientSecret;
+  }
+
+  /**
+   * Create a Didit KYC session for a user
+   */
+  async createDiditSession(userId: string): Promise<DiditSession> {
+    if (!this.isDiditConfigured()) {
+      throw new BadRequestException('Didit KYC is not configured. Using manual verification.');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // TODO: Implement actual Didit API call
+    // This is a placeholder for the Didit session creation
+    // In production, you would:
+    // 1. Call Didit API to create a session
+    // 2. Store the session ID in KycVerification
+    // 3. Return the session URL for the user to complete KYC
+
+    throw new BadRequestException(
+      'Didit integration pending. Please configure DIDIT_CLIENT_ID and DIDIT_CLIENT_SECRET environment variables, ' +
+      'then implement the Didit API integration. For now, use manual KYC verification.'
+    );
+  }
+
+  /**
+   * Handle Didit webhook callback
+   */
+  async handleDiditWebhook(payload: DiditWebhookPayload): Promise<void> {
+    if (!this.isDiditConfigured()) {
+      throw new BadRequestException('Didit KYC is not configured');
+    }
+
+    // Find the verification by Didit session ID
+    const verification = await this.prisma.kycVerification.findFirst({
+      where: { externalId: payload.sessionId, provider: 'didit' },
+    });
+
+    if (!verification) {
+      throw new NotFoundException('Verification session not found');
+    }
+
+    const newStatus = payload.status === 'approved' 
+      ? KYCStatus.VERIFIED 
+      : payload.status === 'rejected'
+        ? KYCStatus.REJECTED
+        : KYCStatus.PENDING;
+
+    // Update verification record
+    await this.prisma.kycVerification.update({
+      where: { id: verification.id },
+      data: {
+        status: newStatus,
+        rejectionReason: payload.reason,
+        firstName: payload.verificationData?.firstName,
+        lastName: payload.verificationData?.lastName,
+        dateOfBirth: payload.verificationData?.dateOfBirth 
+          ? new Date(payload.verificationData.dateOfBirth) 
+          : undefined,
+        documentType: payload.verificationData?.documentType,
+        documentCountry: payload.verificationData?.documentCountry,
+        verifiedAt: newStatus === KYCStatus.VERIFIED ? new Date() : null,
+      },
+    });
+
+    // Update user's KYC status
+    await this.prisma.user.update({
+      where: { id: verification.userId },
+      data: {
+        kycStatus: newStatus,
+        kycVerifiedAt: newStatus === KYCStatus.VERIFIED ? new Date() : null,
+        role: newStatus === KYCStatus.VERIFIED ? UserRole.CREATOR : undefined,
+      },
+    });
+  }
 
   /**
    * Get user's KYC status and verification history

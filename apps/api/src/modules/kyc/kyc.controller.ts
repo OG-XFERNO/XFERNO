@@ -9,7 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { KycService, SubmitKycDto, AdminReviewDto } from './kyc.service';
+import { KycService, SubmitKycDto, AdminReviewDto, DiditWebhookPayload } from './kyc.service';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 
 @Controller('kyc')
@@ -21,7 +21,30 @@ export class KycController {
    */
   @Get('requirements')
   getRequirements() {
-    return this.kycService.getKycRequirements();
+    return {
+      ...this.kycService.getKycRequirements(),
+      provider: this.kycService.isDiditConfigured() ? 'didit' : 'manual',
+    };
+  }
+
+  /**
+   * Create a Didit KYC session
+   */
+  @Post('didit/session')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async createDiditSession(@Request() req: any) {
+    return this.kycService.createDiditSession(req.user.id);
+  }
+
+  /**
+   * Didit webhook callback
+   */
+  @Post('didit/webhook')
+  @HttpCode(HttpStatus.OK)
+  async handleDiditWebhook(@Body() payload: DiditWebhookPayload) {
+    await this.kycService.handleDiditWebhook(payload);
+    return { success: true };
   }
 
   /**
