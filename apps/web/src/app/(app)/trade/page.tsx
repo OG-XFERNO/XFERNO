@@ -334,8 +334,13 @@ export default function TradePage() {
       const maxAmount = parseFloat(ethBalance.formatted) * (percent / 100);
       setAmount(maxAmount.toFixed(6));
     } else if (activeTab === 'sell') {
-      const maxAmount = tokenBalance * (percent / 100);
-      setAmount(maxAmount.toFixed(2));
+      if (percent === 100 && tokenBalanceData) {
+        // Use exact balance for 100% to avoid rounding issues
+        setAmount(formatEther(tokenBalanceData));
+      } else {
+        const maxAmount = tokenBalance * (percent / 100);
+        setAmount(maxAmount.toFixed(6)); // More precision
+      }
     }
   };
 
@@ -380,11 +385,28 @@ export default function TradePage() {
           return;
         }
 
-        console.log('Selling tokens:', {
+        // Check if user has enough tokens
+        const userBalance = tokenBalanceData || BigInt(0);
+        console.log('Sell validation:', {
           token: tokenAddress,
           tokenAmount: parsedAmount.toString(),
+          userBalance: userBalance.toString(),
+          hasEnough: userBalance >= parsedAmount,
           allowance: allowance?.toString(),
         });
+
+        if (parsedAmount > userBalance) {
+          console.error('Insufficient token balance!');
+          txToast.error(`Insufficient balance. You have ${parseFloat(formatEther(userBalance)).toFixed(4)} tokens.`);
+          return;
+        }
+
+        // Check if token is graduated (can't trade on bonding curve after graduation)
+        if (tokenInfo.graduated) {
+          console.error('Token has graduated!');
+          txToast.error('This token has graduated and can no longer be traded on the bonding curve.');
+          return;
+        }
 
         // For now, set minEth to 0 (no slippage protection)
         // TODO: Use contract's getSellPrice to calculate expected ETH
@@ -596,7 +618,7 @@ export default function TradePage() {
                     <div className="flex justify-between text-sm">
                       <Label>You Pay</Label>
                       <span className="text-muted-foreground">
-                        Balance: {ethBalance ? parseFloat(ethBalance.formatted).toFixed(4) : '0'} ETH
+                        Balance: {ethBalance ? ethBalance.formatted : '0'} ETH
                       </span>
                     </div>
                     <div className="relative">
@@ -650,7 +672,7 @@ export default function TradePage() {
                     <div className="flex justify-between text-sm">
                       <Label>You Sell</Label>
                       <span className="text-muted-foreground">
-                        Balance: {formatNumber(tokenBalance)} {token.symbol}
+                        Balance: {tokenBalanceData ? formatEther(tokenBalanceData) : '0'} {token.symbol}
                       </span>
                     </div>
                     <div className="relative">
