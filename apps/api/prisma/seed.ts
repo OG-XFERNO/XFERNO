@@ -41,13 +41,13 @@ const networks = [
   {
     id: 'BDAG_MAINNET',
     name: 'BlockDAG',
-    chainId: 1337, // Placeholder - update with actual chain ID
+    chainId: 1043, // BlockDAG mainnet (same as testnet for now)
     type: NetworkType.EVM,
     symbol: 'BDAG',
     tokenStandard: TokenStandard.ERC20,
-    rpcUrl: 'https://rpc.blockdag.network', // Placeholder
-    wsUrl: 'wss://ws.blockdag.network',
-    explorerUrl: 'https://explorer.blockdag.network',
+    rpcUrl: 'https://relay.awakening.bdagscan.com',
+    wsUrl: null,
+    explorerUrl: 'https://awakening.bdagscan.com',
     isEnabledForBase: true,
     isEnabledForSplit: true,
     gasToken: 'BDAG',
@@ -56,14 +56,14 @@ const networks = [
   },
   {
     id: 'BDAG_TESTNET',
-    name: 'BlockDAG Testnet',
-    chainId: 1338, // Placeholder
+    name: 'BlockDAG Awakening',
+    chainId: 1043, // BlockDAG Awakening Testnet
     type: NetworkType.EVM,
     symbol: 'BDAG',
     tokenStandard: TokenStandard.ERC20,
-    rpcUrl: 'https://testnet-rpc.blockdag.network',
+    rpcUrl: 'https://relay.awakening.bdagscan.com',
     wsUrl: null,
-    explorerUrl: 'https://testnet-explorer.blockdag.network',
+    explorerUrl: 'https://awakening.bdagscan.com',
     isEnabledForBase: true,
     isEnabledForSplit: true,
     gasToken: 'BDAG',

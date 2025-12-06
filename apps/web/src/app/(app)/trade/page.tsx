@@ -47,6 +47,7 @@ import {
   ExternalLink,
   Coins,
 } from 'lucide-react';
+import { NETWORK_CONFIG } from '@/components/tokens/token-card';
 
 // Default token when none is selected
 const DEFAULT_TOKEN = {
@@ -75,6 +76,10 @@ export default function TradePage() {
   const chainId = useChainId();
   const { data: ethBalance } = useBalance({ address });
   const { data: gasPrice } = useGasPrice();
+  
+  // Get native token symbol for current network
+  const network = NETWORK_CONFIG[chainId] || NETWORK_CONFIG[11155111];
+  const nativeSymbol = network?.symbol || 'ETH';
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
@@ -508,7 +513,7 @@ export default function TradePage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-2xl font-bold">
-                            {token.price > 0 ? formatPriceETH(token.price) : '0'} ETH
+                            {token.price > 0 ? formatPriceETH(token.price) : '0'} {nativeSymbol}
                           </span>
                           {token.priceChange24h !== 0 && (
                             <Badge
@@ -542,7 +547,7 @@ export default function TradePage() {
                     <div className="hidden sm:flex flex-wrap gap-4 sm:gap-6 text-sm">
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">24h Volume</p>
-                        <p className="font-medium">{formatPriceETH(token.volume24h)} ETH</p>
+                        <p className="font-medium">{formatPriceETH(token.volume24h)} {nativeSymbol}</p>
                       </div>
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Trades</p>
@@ -550,7 +555,7 @@ export default function TradePage() {
                       </div>
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Liquidity</p>
-                        <p className="font-medium">{formatPriceETH(token.liquidity)} ETH</p>
+                        <p className="font-medium">{formatPriceETH(token.liquidity)} {nativeSymbol}</p>
                       </div>
                       <div className="min-w-[70px]">
                         <p className="text-muted-foreground text-xs">Your Balance</p>

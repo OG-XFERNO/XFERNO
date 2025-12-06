@@ -34,7 +34,9 @@ import {
   Droplets,
   ArrowLeft,
   Loader2,
+  Globe,
 } from 'lucide-react';
+import { NETWORK_CONFIG } from '@/components/tokens/token-card';
 
 export default function TokenDetailPage() {
   const params = useParams();
@@ -68,6 +70,10 @@ export default function TokenDetailPage() {
   const price = token?.currentPrice ? Number(formatEther(token.currentPrice)) : 0;
   const totalSupply = token?.totalSupply ? Number(formatEther(token.totalSupply)) : 0;
   const explorerUrl = getExplorerTokenUrl(chainId, tokenAddress);
+  
+  // Get network info for display
+  const network = NETWORK_CONFIG[chainId] || NETWORK_CONFIG[11155111];
+  const liquiditySymbol = network?.symbol || 'ETH';
 
   // Loading state
   if (!mounted || isLoading) {
@@ -169,6 +175,15 @@ export default function TokenDetailPage() {
                   <Badge variant="outline" className="text-sm sm:text-lg">
                     ${token.symbol}
                   </Badge>
+                  {/* Network Badge */}
+                  <Badge 
+                    variant="outline" 
+                    className="gap-1"
+                    style={{ borderColor: network?.color, color: network?.color }}
+                  >
+                    <span>{network?.icon}</span>
+                    {network?.name}
+                  </Badge>
                   {token.graduated && (
                     <Badge variant="success" className="gap-1">
                       <Zap className="w-3 h-3" />
@@ -242,7 +257,7 @@ export default function TokenDetailPage() {
               <Droplets className="h-4 w-4" />
               Liquidity
             </div>
-            <p className="text-xl font-bold">{formatNumber(token.liquidity)} ETH</p>
+            <p className="text-xl font-bold">{formatNumber(token.liquidity)} {liquiditySymbol}</p>
           </CardContent>
         </Card>
 
@@ -296,8 +311,8 @@ export default function TokenDetailPage() {
               />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0 ETH</span>
-              <span>Target: 6.9 ETH</span>
+              <span>0 {liquiditySymbol}</span>
+              <span>Target: 6.9 {liquiditySymbol}</span>
             </div>
           </div>
         </CardContent>

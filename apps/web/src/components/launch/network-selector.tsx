@@ -65,7 +65,7 @@ export const networks: NetworkConfig[] = [
   {
     id: 'BDAG_MAINNET',
     name: 'BlockDAG',
-    chainId: 1337,
+    chainId: 1043,
     icon: '🔷',
     color: '#00D4FF',
     type: 'EVM',
@@ -77,8 +77,8 @@ export const networks: NetworkConfig[] = [
   },
   {
     id: 'BDAG_TESTNET',
-    name: 'BlockDAG Testnet',
-    chainId: 1338,
+    name: 'BlockDAG Awakening',
+    chainId: 1043,
     icon: '🔷',
     color: '#00D4FF',
     type: 'EVM',

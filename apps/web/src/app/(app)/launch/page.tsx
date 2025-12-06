@@ -362,6 +362,10 @@ export default function LaunchPage() {
   const estimatedMarketCap = parseFloat(formData.totalSupply || '0') * parseFloat(formData.initialPrice || '0');
   const platformFee = creationFee ? parseFloat(formatEther(creationFee)) : 0.001;
   
+  // Get the native gas token symbol for the selected base network
+  const selectedNetwork = networks.find(n => n.id === formData.baseNetwork);
+  const gasTokenSymbol = selectedNetwork?.nativeCurrency.symbol || 'ETH';
+  
   // Calculate gas from API estimate or fallback
   const estimatedGas = gasEstimate 
     ? parseFloat(gasEstimate.totalEstimatedCost) / 1e18 
@@ -844,18 +848,18 @@ export default function LaunchPage() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Platform Fee</span>
-                            <span>{platformFee} ETH</span>
+                            <span>{platformFee} {gasTokenSymbol}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Est. Gas ({formData.splitNetworks.length + 1} chain{formData.splitNetworks.length > 0 ? 's' : ''})</span>
                             <span className="flex items-center gap-1">
                               {isEstimating && <Loader2 className="w-3 h-3 animate-spin" />}
-                              ~{estimatedGas.toFixed(4)} ETH
+                              ~{estimatedGas.toFixed(4)} {gasTokenSymbol}
                             </span>
                           </div>
                           <div className="flex justify-between font-medium border-t pt-2 mt-2">
                             <span>Total</span>
-                            <span className="text-gradient-fire">~{(platformFee + estimatedGas).toFixed(4)} ETH</span>
+                            <span className="text-gradient-fire">~{(platformFee + estimatedGas).toFixed(4)} {gasTokenSymbol}</span>
                           </div>
                         </div>
                       </CardContent>

@@ -10,19 +10,37 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, TrendingDown, Zap, Crown, Lock } from 'lucide-react';
 import { type TokenWithData } from '@/lib/contracts';
 
+// Network info for display - exported for use in other components
+export const NETWORK_CONFIG: Record<number, { name: string; icon: string; symbol: string; color: string }> = {
+  1: { name: 'Ethereum', icon: '⟠', symbol: 'ETH', color: '#627EEA' },
+  11155111: { name: 'Sepolia', icon: '⟠', symbol: 'ETH', color: '#627EEA' },
+  1043: { name: 'BlockDAG', icon: '🔷', symbol: 'BDAG', color: '#00D4FF' },
+  42161: { name: 'Arbitrum', icon: '🔵', symbol: 'ETH', color: '#28A0F0' },
+  8453: { name: 'Base', icon: '🔵', symbol: 'ETH', color: '#0052FF' },
+  10: { name: 'Optimism', icon: '🔴', symbol: 'ETH', color: '#FF0420' },
+  56: { name: 'BNB', icon: '🟡', symbol: 'BNB', color: '#F0B90B' },
+  137: { name: 'Polygon', icon: '🟣', symbol: 'MATIC', color: '#8247E5' },
+  43114: { name: 'Avalanche', icon: '🔺', symbol: 'AVAX', color: '#E84142' },
+};
+
 interface TokenCardProps {
   token: TokenWithData;
   rank?: number;
   showRank?: boolean;
   requireAuth?: boolean;
   onNeedAuth?: () => void;
+  chainId?: number; // Optional chain ID for network display
 }
 
-export function TokenCard({ token, rank, showRank = false, requireAuth = false, onNeedAuth }: TokenCardProps) {
+export function TokenCard({ token, rank, showRank = false, requireAuth = false, onNeedAuth, chainId = 11155111 }: TokenCardProps) {
   const router = useRouter();
   const price = token.currentPrice 
     ? Number(formatEther(token.currentPrice)) 
     : 0;
+
+  // Get network info for display
+  const network = NETWORK_CONFIG[chainId] || NETWORK_CONFIG[11155111];
+  const liquiditySymbol = network.symbol;
 
   const formatNumber = (num: number, decimals = 2) => {
     if (num >= 1e9) return `$${(num / 1e9).toFixed(decimals)}B`;
@@ -63,6 +81,14 @@ export function TokenCard({ token, rank, showRank = false, requireAuth = false, 
                 <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
                   {token.name}
                 </h3>
+                {/* Network Badge */}
+                <Badge 
+                  variant="outline" 
+                  className="text-xs flex-shrink-0"
+                  style={{ borderColor: network.color, color: network.color }}
+                >
+                  {network.icon}
+                </Badge>
                 {token.graduated && (
                   <Badge variant="success" className="text-xs flex-shrink-0">
                     <Zap className="w-3 h-3 mr-1" />
@@ -80,7 +106,7 @@ export function TokenCard({ token, rank, showRank = false, requireAuth = false, 
               ${price.toFixed(8)}
             </p>
             <p className="text-sm text-muted-foreground">
-              {token.liquidity !== undefined ? `${token.liquidity.toFixed(3)} ETH` : '-'}
+              {token.liquidity !== undefined ? `${token.liquidity.toFixed(3)} ${liquiditySymbol}` : '-'}
             </p>
           </div>
         </div>
