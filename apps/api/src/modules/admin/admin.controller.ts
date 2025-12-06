@@ -1,15 +1,20 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   Request,
   ForbiddenException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { AdminInvitationService } from './admin-invitation.service';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 
 // Admin guard to check for ADMIN or SUPER_ADMIN role
@@ -19,14 +24,24 @@ function checkAdminRole(req: any) {
   }
 }
 
+// Super admin only
+function checkSuperAdminRole(req: any) {
+  if (!req.user || req.user.role !== 'SUPER_ADMIN') {
+    throw new ForbiddenException('Super admin access required');
+  }
+}
+
 @Controller('admin')
-@UseGuards(JwtAuthGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly invitationService: AdminInvitationService,
+  ) {}
 
   // ========== DASHBOARD ==========
 
   @Get('dashboard')
+  @UseGuards(JwtAuthGuard)
   async dashboard(@Request() req: any) {
     checkAdminRole(req);
     return this.adminService.getDashboardStats();
@@ -35,6 +50,7 @@ export class AdminController {
   // ========== USER MANAGEMENT ==========
 
   @Get('users')
+  @UseGuards(JwtAuthGuard)
   async getUsers(
     @Request() req: any,
     @Query('page') page?: string,
@@ -52,12 +68,14 @@ export class AdminController {
   }
 
   @Get('users/:id')
+  @UseGuards(JwtAuthGuard)
   async getUser(@Request() req: any, @Param('id') id: string) {
     checkAdminRole(req);
     return this.adminService.getUser(id);
   }
 
   @Put('users/:id/role')
+  @UseGuards(JwtAuthGuard)
   async updateUserRole(
     @Request() req: any,
     @Param('id') id: string,
@@ -70,6 +88,7 @@ export class AdminController {
   }
 
   @Put('users/:id/kyc')
+  @UseGuards(JwtAuthGuard)
   async updateUserKycStatus(
     @Request() req: any,
     @Param('id') id: string,
@@ -84,6 +103,7 @@ export class AdminController {
   // ========== TOKEN MANAGEMENT ==========
 
   @Get('tokens')
+  @UseGuards(JwtAuthGuard)
   async getTokens(
     @Request() req: any,
     @Query('page') page?: string,
@@ -100,6 +120,7 @@ export class AdminController {
   }
 
   @Put('tokens/:id/status')
+  @UseGuards(JwtAuthGuard)
   async updateTokenStatus(
     @Request() req: any,
     @Param('id') id: string,
@@ -114,16 +135,18 @@ export class AdminController {
   // ========== NETWORK MANAGEMENT ==========
 
   @Get('networks')
+  @UseGuards(JwtAuthGuard)
   async getNetworks(@Request() req: any) {
     checkAdminRole(req);
     return this.adminService.getNetworks();
   }
 
   @Put('networks/:id')
+  @UseGuards(JwtAuthGuard)
   async updateNetwork(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: { isEnabled?: boolean; rpcUrl?: string },
+    @Body() body: { isEnabledForBase?: boolean; isEnabledForSplit?: boolean; rpcUrl?: string },
   ) {
     checkAdminRole(req);
     const result = await this.adminService.updateNetwork(id, body);
@@ -134,6 +157,7 @@ export class AdminController {
   // ========== ADMIN LOGS ==========
 
   @Get('logs')
+  @UseGuards(JwtAuthGuard)
   async getAdminLogs(
     @Request() req: any,
     @Query('page') page?: string,
@@ -141,5 +165,63 @@ export class AdminController {
   ) {
     checkAdminRole(req);
     return this.adminService.getAdminLogs(parseInt(page || '1'), parseInt(limit || '50'));
+  }
+
+  // ========== ADMIN INVITATIONS ==========
+
+  @Post('invitations')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async createInvitation(
+    @Request() req: any,
+    @Body() body: { email: string; role?: 'ADMIN' | 'SUPER_ADMIN' },
+  ) {
+    checkSuperAdminRole(req); // Only super admins can invite
+    const result = await this.invitationService.createInvitation(
+      req.user.id,
+      body.email,
+      body.role || 'ADMIN',
+    );
+    await this.adminService.createAdminLog(req.user.id, 'CREATE_INVITATION', 'INVITATION', body.email, { role: body.role });
+    return result;
+  }
+
+  @Get('invitations')
+  @UseGuards(JwtAuthGuard)
+  async listInvitations(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    checkSuperAdminRole(req);
+    return this.invitationService.listInvitations(parseInt(page || '1'), parseInt(limit || '20'));
+  }
+
+  @Delete('invitations/:id')
+  @UseGuards(JwtAuthGuard)
+  async revokeInvitation(@Request() req: any, @Param('id') id: string) {
+    checkSuperAdminRole(req);
+    const result = await this.invitationService.revokeInvitation(id);
+    await this.adminService.createAdminLog(req.user.id, 'REVOKE_INVITATION', 'INVITATION', id);
+    return result;
+  }
+
+  // Public endpoints for accepting invitations
+  @Get('invitations/verify/:token')
+  async verifyInvitation(@Param('token') token: string) {
+    return this.invitationService.verifyInvitation(token);
+  }
+
+  @Post('invitations/accept/:token')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async acceptInvitation(@Request() req: any, @Param('token') token: string) {
+    return this.invitationService.acceptInvitation(token, req.user.id);
+  }
+
+  // Staff status endpoint (public for profile badges)
+  @Get('staff-status/:userId')
+  async getStaffStatus(@Param('userId') userId: string) {
+    return this.invitationService.getStaffStatus(userId);
   }
 }

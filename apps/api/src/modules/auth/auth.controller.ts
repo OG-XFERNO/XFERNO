@@ -35,6 +35,12 @@ export class AuthController {
     return this.authService.login(body);
   }
 
+  @Post('login/2fa')
+  @HttpCode(HttpStatus.OK)
+  async loginWith2FA(@Body() body: { userId: string; code: string }) {
+    return this.authService.loginWith2FA(body.userId, body.code);
+  }
+
   @Get('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Query('token') token: string) {
@@ -182,6 +188,39 @@ export class AuthController {
     return {
       success: true,
       recoveryCodes,
+    };
+  }
+
+  // ========== EMAIL 2FA ==========
+
+  @Post('2fa/email/enable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async enableEmail2FA(@Request() req: any) {
+    await this.twoFactorService.enableEmail2FA(req.user.id);
+    return { message: 'Email 2FA has been enabled' };
+  }
+
+  @Post('2fa/email/send')
+  @HttpCode(HttpStatus.OK)
+  async sendEmail2FA(@Body() body: { userId: string; email: string }) {
+    await this.twoFactorService.sendEmailOTP(body.userId, body.email);
+    return { message: 'Verification code sent to your email' };
+  }
+
+  @Post('2fa/email/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail2FA(@Body() body: { userId: string; code: string }) {
+    const isValid = await this.twoFactorService.verifyEmailOTP(body.userId, body.code);
+    if (!isValid) {
+      return { success: false, message: 'Invalid or expired verification code' };
+    }
+
+    // Generate new access token after 2FA verification
+    const authResponse = await this.authService.generateTokenAfter2FA(body.userId);
+    return {
+      success: true,
+      ...authResponse,
     };
   }
 }

@@ -91,25 +91,32 @@ function getRoleBadge(role: string) {
   }
 }
 
+const PER_PAGE_OPTIONS = [20, 50, 100];
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [perPage, setPerPage] = useState(20);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Filters
-  const [roleFilter, setRoleFilter] = useState<string>('');
-  const [kycFilter, setKycFilter] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [kycFilter, setKycFilter] = useState<string>('all');
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('xferno_token');
-      const params = new URLSearchParams({ page: page.toString(), limit: '20' });
-      if (roleFilter) params.set('role', roleFilter);
-      if (kycFilter) params.set('kycStatus', kycFilter);
+      const params = new URLSearchParams({ 
+        page: page.toString(), 
+        limit: perPage.toString() 
+      });
+      if (roleFilter && roleFilter !== 'all') params.set('role', roleFilter);
+      if (kycFilter && kycFilter !== 'all') params.set('kycStatus', kycFilter);
 
       const response = await fetch(`${API_BASE}/api/admin/users?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -120,6 +127,7 @@ export default function AdminUsersPage() {
       const data = await response.json();
       setUsers(data.users);
       setTotalPages(data.totalPages);
+      setTotalUsers(data.total);
     } catch (err) {
       toast.error('Failed to load users');
     } finally {
@@ -129,7 +137,13 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, roleFilter, kycFilter]);
+  }, [page, perPage, roleFilter, kycFilter]);
+
+  // Reset to page 1 when perPage changes
+  const handlePerPageChange = (value: string) => {
+    setPerPage(parseInt(value));
+    setPage(1);
+  };
 
   const updateUserRole = async (userId: string, role: string) => {
     setActionLoading(true);
@@ -189,13 +203,13 @@ export default function AdminUsersPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Roles</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="USER">User</SelectItem>
                 <SelectItem value="CREATOR">Creator</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
@@ -207,7 +221,7 @@ export default function AdminUsersPage() {
                 <SelectValue placeholder="Filter by KYC" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All KYC Status</SelectItem>
+                <SelectItem value="all">All KYC Status</SelectItem>
                 <SelectItem value="NONE">None</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
                 <SelectItem value="VERIFIED">Verified</SelectItem>
@@ -215,9 +229,25 @@ export default function AdminUsersPage() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" onClick={() => { setRoleFilter(''); setKycFilter(''); }}>
+            <Button variant="outline" onClick={() => { setRoleFilter('all'); setKycFilter('all'); setPage(1); }}>
               Clear Filters
             </Button>
+
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Show:</span>
+              <Select value={perPage.toString()} onValueChange={handlePerPageChange}>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PER_PAGE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option.toString()}>
+                      {option} / page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -225,9 +255,13 @@ export default function AdminUsersPage() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Users ({users.length})
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Users
+            </div>
+            <span className="text-sm font-normal text-muted-foreground">
+              {totalUsers > 0 ? `${totalUsers} total` : 'Loading...'}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -320,26 +354,47 @@ export default function AdminUsersPage() {
               </Table>
 
               {/* Pagination */}
-              <div className="flex justify-center gap-2 mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                <span className="flex items-center px-4 text-sm">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= totalPages}
-                >
-                  Next
-                </Button>
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {((page - 1) * perPage) + 1} - {Math.min(page * perPage, totalUsers)} of {totalUsers} users
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                  >
+                    First
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="flex items-center px-4 text-sm font-medium">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page >= totalPages}
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(totalPages)}
+                    disabled={page >= totalPages}
+                  >
+                    Last
+                  </Button>
+                </div>
               </div>
             </>
           )}

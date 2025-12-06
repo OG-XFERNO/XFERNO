@@ -19,6 +19,7 @@ interface NavItem {
   label: string;
   requiresAuth?: boolean;
   requiresCreator?: boolean;
+  hideWhenAuth?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -26,7 +27,7 @@ const navItems: NavItem[] = [
   { href: '/tokens', label: 'Explore' },
   { href: '/launch', label: 'Launch', requiresAuth: true, requiresCreator: true },
   { href: '/trade', label: 'Trade' },
-  { href: '/docs', label: 'Docs' },
+  { href: '/docs', label: 'Docs', hideWhenAuth: true },
 ];
 
 export function Header() {
@@ -40,6 +41,7 @@ export function Header() {
   const filteredNavItems = navItems.filter((item) => {
     if (item.requiresAuth && !isAuthenticated) return false;
     if (item.requiresCreator && !canLaunch) return false;
+    if (item.hideWhenAuth && isAuthenticated) return false;
     return true;
   });
 

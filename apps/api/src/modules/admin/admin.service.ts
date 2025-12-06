@@ -20,8 +20,8 @@ export class AdminService {
       this.prisma.user.count(),
       this.prisma.token.count(),
       this.prisma.trade.count(),
-      this.prisma.token.count({ where: { status: 'PRESALE' } }),
-      this.prisma.token.count({ where: { status: 'GRADUATED' } }),
+      this.prisma.token.count({ where: { status: 'PRESALE_ACTIVE' } }),
+      this.prisma.token.count({ where: { status: 'LIVE_MULTICHAIN' } }),
       this.prisma.user.count({ where: { kycStatus: 'PENDING' } }),
       this.prisma.user.count({ where: { kycStatus: 'VERIFIED' } }),
     ]);
@@ -46,7 +46,9 @@ export class AdminService {
   // ========== USER MANAGEMENT ==========
 
   async getUsers(page = 1, limit = 20, filters?: { role?: string; kycStatus?: string; accountType?: string }) {
-    const skip = (page - 1) * limit;
+    // Cap limit at 100 to prevent abuse
+    const safeLimit = Math.min(limit, 100);
+    const skip = (page - 1) * safeLimit;
     const where: any = {};
 
     if (filters?.role) where.role = filters.role;
@@ -57,7 +59,7 @@ export class AdminService {
       this.prisma.user.findMany({
         where,
         skip,
-        take: limit,
+        take: safeLimit,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -86,7 +88,7 @@ export class AdminService {
       users,
       total,
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 
@@ -172,7 +174,7 @@ export class AdminService {
           },
           _count: {
             select: {
-              presaleContributions: true,
+              contributions: true,
             },
           },
         },
@@ -206,7 +208,7 @@ export class AdminService {
     });
   }
 
-  async updateNetwork(networkId: string, data: { isEnabled?: boolean; rpcUrl?: string }) {
+  async updateNetwork(networkId: string, data: { isEnabledForBase?: boolean; isEnabledForSplit?: boolean; rpcUrl?: string }) {
     const network = await this.prisma.network.findUnique({ where: { id: networkId } });
     if (!network) throw new NotFoundException('Network not found');
 

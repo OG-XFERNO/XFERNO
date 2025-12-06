@@ -122,10 +122,11 @@ model User {
   kycStatus        KYCStatus   @default(NONE)
   kycVerifiedAt    DateTime?
   kycBannerDismissed Boolean   @default(false)
-  role             UserRole    @default(USER)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  lastLoginAt      DateTime?
+  role              UserRole    @default(USER)
+  notificationPrefs Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  lastLoginAt       DateTime?
 
   wallets              Wallet[]
   sessions             Session[]
@@ -548,4 +549,21 @@ model Activity {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+}
+
+// ============== ADMIN INVITATION ==============
+
+model AdminInvitation {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  role         UserRole  @default(ADMIN)
+  invitedById  String?   // null for seeded admins
+  token        String    @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  acceptedById String?   // User ID who accepted
+  createdAt    DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
 }

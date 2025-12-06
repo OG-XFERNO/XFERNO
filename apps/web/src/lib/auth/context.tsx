@@ -1,17 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAccount, useSignMessage } from 'wagmi';
 import type { User, AuthResponse, LoginData } from './types';
 import * as authApi from './api';
+import type { TwoFARequired } from './api';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
-  login: (data: LoginData) => Promise<void>;
-  loginWithWallet: () => Promise<void>;
+  login: (data: LoginData) => Promise<TwoFARequired | void>;
+  loginWith2FA: (userId: string, code: string) => Promise<void>;
+  loginWithEmail2FA: (userId: string, email: string, code: string) => Promise<void>;
+  sendEmail2FACode: (userId: string, email: string) => Promise<void>;
   loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -25,9 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const { address, isConnected } = useAccount();
-  const { signMessageAsync } = useSignMessage();
 
   // Check for existing session on mount
   useEffect(() => {
@@ -51,12 +50,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authApi.getProfile().then(setUser);
   }, []);
 
-  const login = useCallback(async (data: LoginData) => {
+  const login = useCallback(async (data: LoginData): Promise<TwoFARequired | void> => {
     setError(null);
     setIsLoading(true);
     try {
       const response = await authApi.login(data);
-      handleAuthResponse(response);
+      console.log('Auth context login response:', response);
+      // Check if 2FA is required
+      if ('requires2FA' in response && response.requires2FA) {
+        setIsLoading(false);
+        return response as TwoFARequired;
+      }
+      handleAuthResponse(response as AuthResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
@@ -65,39 +70,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [handleAuthResponse]);
 
-  const loginWithWallet = useCallback(async () => {
-    if (!address || !isConnected) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
+  const loginWith2FA = useCallback(async (userId: string, code: string) => {
     setError(null);
     setIsLoading(true);
-
     try {
-      // Create sign message
-      const timestamp = Date.now();
-      const message = `Sign this message to login to XFERNO.\n\nTimestamp: ${timestamp}\nWallet: ${address}`;
-
-      // Request signature
-      const signature = await signMessageAsync({ message });
-
-      // Login with wallet
-      const response = await authApi.walletLogin({
-        address,
-        signature,
-        message,
-        networkType: 'EVM',
-      });
-
+      const response = await authApi.loginWith2FA(userId, code);
       handleAuthResponse(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Wallet login failed');
+      setError(err instanceof Error ? err.message : '2FA verification failed');
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [address, isConnected, signMessageAsync, handleAuthResponse]);
+  }, [handleAuthResponse]);
+
+  const sendEmail2FACode = useCallback(async (userId: string, email: string) => {
+    setError(null);
+    try {
+      await authApi.sendEmail2FA(userId, email);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send verification code');
+      throw err;
+    }
+  }, []);
+
+  const loginWithEmail2FA = useCallback(async (userId: string, email: string, code: string) => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const response = await authApi.verifyEmail2FA(userId, code);
+      if (response.success) {
+        handleAuthResponse(response);
+      } else {
+        throw new Error('Invalid verification code');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Email 2FA verification failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [handleAuthResponse]);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
@@ -135,7 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!user,
     error,
     login,
-    loginWithWallet,
+    loginWith2FA,
+    loginWithEmail2FA,
+    sendEmail2FACode,
     loginWithToken,
     logout,
     refreshUser,

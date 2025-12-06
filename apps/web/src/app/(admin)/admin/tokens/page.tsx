@@ -51,14 +51,20 @@ interface Token {
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case 'PRESALE':
-      return <Badge variant="warning">Presale</Badge>;
-    case 'GRADUATED':
-      return <Badge variant="success">Graduated</Badge>;
+    case 'PRESALE_ACTIVE':
+      return <Badge className="bg-yellow-500">Presale</Badge>;
+    case 'GRADUATION_PENDING':
+      return <Badge className="bg-blue-500">Graduating</Badge>;
+    case 'GRADUATED_DEPLOYING':
+      return <Badge className="bg-purple-500">Deploying</Badge>;
+    case 'LIVE_MULTICHAIN':
+      return <Badge className="bg-green-500">Live</Badge>;
     case 'FAILED':
       return <Badge variant="destructive">Failed</Badge>;
     case 'PAUSED':
       return <Badge variant="secondary">Paused</Badge>;
+    case 'DRAFT':
+      return <Badge variant="outline">Draft</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -69,14 +75,14 @@ export default function AdminTokensPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const fetchTokens = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('xferno_token');
       const params = new URLSearchParams({ page: page.toString(), limit: '20' });
-      if (statusFilter) params.set('status', statusFilter);
+      if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
 
       const response = await fetch(`${API_BASE}/api/admin/tokens?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -138,15 +144,16 @@ export default function AdminTokensPage() {
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
-                <SelectItem value="PRESALE">Presale</SelectItem>
-                <SelectItem value="GRADUATED">Graduated</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="PRESALE_ACTIVE">Presale</SelectItem>
+                <SelectItem value="GRADUATION_PENDING">Graduating</SelectItem>
+                <SelectItem value="LIVE_MULTICHAIN">Live</SelectItem>
                 <SelectItem value="PAUSED">Paused</SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
               </SelectContent>
             </Select>
 
-            <Button variant="outline" onClick={() => setStatusFilter('')}>
+            <Button variant="outline" onClick={() => setStatusFilter('all')}>
               Clear Filters
             </Button>
           </div>
@@ -236,10 +243,17 @@ export default function AdminTokensPage() {
                               Pause Token
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => updateTokenStatus(token.id, 'PRESALE')}
-                              disabled={token.status === 'PRESALE'}
+                              onClick={() => updateTokenStatus(token.id, 'PRESALE_ACTIVE')}
+                              disabled={token.status === 'PRESALE_ACTIVE'}
                             >
                               Resume Presale
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => updateTokenStatus(token.id, 'FAILED')}
+                              disabled={token.status === 'FAILED'}
+                              className="text-red-500"
+                            >
+                              Mark as Failed
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

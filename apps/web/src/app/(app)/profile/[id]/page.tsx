@@ -28,6 +28,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { StaffBadge } from '@/components/badges/staff-badge';
 
 function formatDate(date: string): string {
   return new Date(date).toLocaleDateString('en-US', {
@@ -161,6 +162,7 @@ export default function ProfilePage() {
                 <Badge variant="secondary" className="w-fit mx-auto md:mx-0">
                   {profile.accountType}
                 </Badge>
+                <StaffBadge userId={userId} />
               </div>
 
               {profile.username && (

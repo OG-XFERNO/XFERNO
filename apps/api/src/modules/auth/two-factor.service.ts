@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
@@ -8,12 +9,17 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class TwoFactorService {
+  private readonly logger = new Logger(TwoFactorService.name);
   private readonly TOTP_STEP = 30; // 30 second window
   private readonly TOTP_DIGITS = 6;
   private readonly RECOVERY_CODE_COUNT = 10;
   private readonly APP_NAME = 'XFERNO';
+  private readonly EMAIL_OTP_EXPIRY = 10 * 60 * 1000; // 10 minutes
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   /**
    * Generate a new secret for 2FA setup
@@ -286,5 +292,103 @@ export class TwoFactorService {
     }
 
     return false;
+  }
+
+  // ========== EMAIL OTP METHODS ==========
+
+  /**
+   * Generate and send email OTP for login
+   */
+  async sendEmailOTP(userId: string, email: string): Promise<void> {
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + this.EMAIL_OTP_EXPIRY);
+
+    // Store OTP in user record (using twoFactorSecret temporarily)
+    // In production, you'd use a separate table for email OTPs
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorSecret: `EMAIL_OTP:${otp}:${expiresAt.getTime()}`,
+      },
+    });
+
+    // Send email with OTP
+    await this.emailService.send2FAEmail({
+      email,
+      code: otp,
+      expiresIn: '10 minutes',
+    });
+
+    this.logger.log(`Email OTP sent to ${email}`);
+  }
+
+  /**
+   * Verify email OTP
+   */
+  async verifyEmailOTP(userId: string, code: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.twoFactorSecret) {
+      return false;
+    }
+
+    // Check if it's an email OTP
+    if (!user.twoFactorSecret.startsWith('EMAIL_OTP:')) {
+      return false;
+    }
+
+    const [, storedOtp, expiresAtStr] = user.twoFactorSecret.split(':');
+    const expiresAt = parseInt(expiresAtStr, 10);
+
+    // Check expiry
+    if (Date.now() > expiresAt) {
+      // Clear expired OTP
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { twoFactorSecret: null },
+      });
+      return false;
+    }
+
+    // Verify code
+    if (storedOtp !== code) {
+      return false;
+    }
+
+    // Clear OTP after successful verification
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorSecret: null },
+    });
+
+    return true;
+  }
+
+  /**
+   * Enable email-based 2FA for a user
+   */
+  async enableEmail2FA(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorSecret: 'EMAIL_2FA', // Marker for email-based 2FA
+      },
+    });
+  }
+
+  /**
+   * Check if user has email-based 2FA enabled
+   */
+  async isEmail2FAEnabled(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorSecret: true, twoFactorEnabled: true },
+    });
+
+    return user?.twoFactorEnabled === true && user?.twoFactorSecret === 'EMAIL_2FA';
   }
 }

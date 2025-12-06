@@ -306,8 +306,9 @@ export class AuthService {
   /**
    * Login with email/password
    * Blocks login if email not verified
+   * Requires 2FA code if enabled
    */
-  async login(data: LoginDto): Promise<AuthResponse> {
+  async login(data: LoginDto): Promise<AuthResponse | { requires2FA: true; twoFAType: 'email' | 'authenticator'; userId: string; email: string }> {
     const user = await this.prisma.user.findUnique({
       where: { email: data.email.toLowerCase() },
     });
@@ -329,6 +330,72 @@ export class AuthService {
         code: 'EMAIL_NOT_VERIFIED',
         email: user.email,
       });
+    }
+
+    // Check if 2FA is enabled - if so, require 2FA code
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const isEmail2FA = user.twoFactorSecret === 'EMAIL_2FA';
+      
+      // Return indicator that 2FA is required
+      return {
+        requires2FA: true,
+        twoFAType: isEmail2FA ? 'email' : 'authenticator',
+        userId: user.id,
+        email: user.email!,
+      };
+    }
+
+    // Update last login
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    // Generate JWT
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email || undefined,
+      role: user.role,
+      emailVerified: true,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email || undefined,
+        username: user.username || undefined,
+        displayName: user.displayName || undefined,
+        avatarUrl: user.avatarUrl || undefined,
+        role: user.role,
+        emailVerified: true,
+      },
+    };
+  }
+
+  /**
+   * Complete login with 2FA code
+   */
+  async loginWith2FA(userId: string, code: string): Promise<AuthResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw new UnauthorizedException('Invalid 2FA request');
+    }
+
+    // Import and use the TwoFactorService for verification
+    const speakeasy = require('speakeasy');
+    const isValid = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    });
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid 2FA code');
     }
 
     // Update last login

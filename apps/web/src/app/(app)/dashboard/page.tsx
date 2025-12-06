@@ -34,6 +34,7 @@ import {
   Star,
   Loader2,
 } from 'lucide-react';
+import { StaffBadge } from '@/components/badges/staff-badge';
 
 interface DashboardProps {
   onUpgrade?: (accountType: 'TRADER' | 'CREATOR') => Promise<void>;
@@ -614,6 +615,7 @@ export default function DashboardPage() {
               KYC Required
             </Badge>
           )}
+          {user?.id && <StaffBadge userId={user.id} size="sm" />}
         </div>
       </div>
 

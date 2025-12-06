@@ -25,6 +25,9 @@ import {
   ShieldAlert,
   Rocket,
   ChevronDown,
+  LayoutDashboard,
+  FileText,
+  Code,
 } from 'lucide-react';
 
 export function UserMenu() {
@@ -32,6 +35,9 @@ export function UserMenu() {
   const { status: kycStatus, isVerified } = useKycStatus();
   const { canLaunch } = useAccountType();
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Check if user is admin/staff
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
   if (isLoading) {
     return (
@@ -150,6 +156,40 @@ export function UserMenu() {
           <Link href="/settings" className="cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
             Settings
+          </Link>
+        </DropdownMenuItem>
+
+        {/* Admin Portal - Only for staff */}
+        {isAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-orange-400 font-semibold">
+              Staff
+            </DropdownMenuLabel>
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="cursor-pointer">
+                <LayoutDashboard className="mr-2 h-4 w-4 text-orange-400" />
+                Admin Portal
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
+
+        {/* Resources Section */}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Resources
+        </DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link href="/docs" className="cursor-pointer">
+            <FileText className="mr-2 h-4 w-4" />
+            Documentation
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/developers" className="cursor-pointer">
+            <Code className="mr-2 h-4 w-4" />
+            Developers
           </Link>
         </DropdownMenuItem>
 

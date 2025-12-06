@@ -27,6 +27,20 @@ export interface PasswordResetEmailData {
   expiresIn: string;
 }
 
+export interface AdminInvitationEmailData {
+  email: string;
+  inviterName?: string;
+  role: string;
+  inviteUrl: string;
+  expiresIn: string;
+}
+
+export interface TwoFAEmailData {
+  email: string;
+  code: string;
+  expiresIn: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -208,6 +222,96 @@ export class EmailService {
     return this.sendEmail({
       to: data.email,
       subject: '🔐 Reset Your XFERNO Password',
+      html,
+    });
+  }
+
+  /**
+   * Send admin invitation email
+   */
+  async sendAdminInvitationEmail(data: AdminInvitationEmailData): Promise<boolean> {
+    const html = this.getEmailTemplate({
+      title: 'XFERNO Staff Invitation',
+      preheader: `You've been invited to join XFERNO Staff`,
+      content: `
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 8px 24px; border-radius: 9999px;">
+            <span style="color: #ffffff; font-weight: 700; font-size: 14px; letter-spacing: 1px;">🛡️ STAFF INVITATION</span>
+          </div>
+        </div>
+        <h2 style="color: #f97316; margin: 0 0 16px 0; font-size: 24px; text-align: center;">You're Invited to Join XFERNO Staff</h2>
+        <p style="margin: 0 0 16px 0; color: #d1d5db; text-align: center;">
+          ${data.inviterName ? `<strong>${data.inviterName}</strong> has invited you` : 'You have been invited'} to join the <strong style="color: #f97316;">XFERNO Staff</strong> team.
+        </p>
+        
+        <div style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 12px; padding: 24px; margin: 24px 0;">
+          <h3 style="color: #ffffff; margin: 0 0 16px 0; font-size: 16px;">🎖️ Staff Benefits</h3>
+          <ul style="margin: 0; padding-left: 20px; color: #d1d5db; font-size: 14px; line-height: 1.8;">
+            <li><strong style="color: #f97316;">XFERNO Staff Badge</strong> - Displayed on your profile</li>
+            <li><strong style="color: #f97316;">Admin Dashboard Access</strong> - Platform analytics & management</li>
+            <li><strong style="color: #f97316;">User Management</strong> - Help manage the community</li>
+            <li><strong style="color: #f97316;">Token Oversight</strong> - Monitor and manage launches</li>
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${data.inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);">
+            Accept Invitation
+          </a>
+        </div>
+        
+        <p style="margin: 0 0 8px 0; color: #9ca3af; font-size: 14px; text-align: center;">
+          Or copy and paste this link into your browser:
+        </p>
+        <p style="margin: 0 0 24px 0; word-break: break-all; text-align: center;">
+          <a href="${data.inviteUrl}" style="color: #f97316; font-size: 12px;">${data.inviteUrl}</a>
+        </p>
+        
+        <div style="background-color: #1c1917; border-radius: 8px; padding: 16px; margin-top: 24px;">
+          <p style="margin: 0; color: #9ca3af; font-size: 13px; text-align: center;">
+            ⏰ This invitation expires in <strong style="color: #fbbf24;">${data.expiresIn}</strong>
+            <br /><br />
+            If you did not expect this invitation, please ignore this email or contact <a href="mailto:security@xferno.io" style="color: #f97316;">security@xferno.io</a>
+          </p>
+        </div>
+      `,
+    });
+
+    return this.sendEmail({
+      to: data.email,
+      subject: '🛡️ XFERNO Staff Invitation - You\'re Invited!',
+      html,
+    });
+  }
+
+  /**
+   * Send 2FA verification code email
+   */
+  async send2FAEmail(data: TwoFAEmailData): Promise<boolean> {
+    const html = this.getEmailTemplate({
+      title: 'Your Verification Code',
+      preheader: 'Your XFERNO 2FA verification code',
+      content: `
+        <p style="margin: 0 0 24px 0;">
+          Use the following code to complete your sign-in. This code will expire in <strong>${data.expiresIn}</strong>.
+        </p>
+        
+        <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+          <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">Verification Code</p>
+          <p style="margin: 12px 0 0 0; color: #ffffff; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: monospace;">${data.code}</p>
+        </div>
+        
+        <div style="background-color: #1c1917; border-radius: 8px; padding: 16px; margin-top: 24px;">
+          <p style="margin: 0; color: #9ca3af; font-size: 13px; text-align: center;">
+            🔐 If you didn't request this code, please ignore this email or contact <a href="mailto:security@xferno.io" style="color: #f97316;">security@xferno.io</a> immediately.
+          </p>
+        </div>
+      `,
+    });
+
+    return this.sendEmail({
+      to: data.email,
+      subject: '🔐 Your XFERNO Verification Code',
       html,
     });
   }

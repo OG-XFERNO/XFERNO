@@ -128,9 +128,6 @@ export class SocialService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          // Include follower user info - need raw query since no relation
-        },
       }),
       this.prisma.follow.count({ where: { followingId: userId } }),
     ]);

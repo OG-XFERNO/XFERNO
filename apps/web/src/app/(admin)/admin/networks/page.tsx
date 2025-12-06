@@ -15,10 +15,13 @@ interface NetworkData {
   id: string;
   name: string;
   chainId: number;
+  type: string;
+  symbol: string;
+  tokenStandard: string;
   rpcUrl: string;
   explorerUrl: string | null;
-  isEnabled: boolean;
-  isTestnet: boolean;
+  isEnabledForBase: boolean;
+  isEnabledForSplit: boolean;
 }
 
 export default function AdminNetworksPage() {
@@ -48,7 +51,7 @@ export default function AdminNetworksPage() {
     fetchNetworks();
   }, []);
 
-  const toggleNetwork = async (networkId: string, isEnabled: boolean) => {
+  const toggleNetwork = async (networkId: string, field: 'isEnabledForBase' | 'isEnabledForSplit', value: boolean) => {
     try {
       const token = localStorage.getItem('xferno_token');
       const response = await fetch(`${API_BASE}/api/admin/networks/${networkId}`, {
@@ -57,12 +60,12 @@ export default function AdminNetworksPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ isEnabled }),
+        body: JSON.stringify({ [field]: value }),
       });
 
       if (!response.ok) throw new Error('Failed to update network');
 
-      toast.success(`Network ${isEnabled ? 'enabled' : 'disabled'}`);
+      toast.success(`Network ${value ? 'enabled' : 'disabled'} for ${field === 'isEnabledForBase' ? 'Base Chain' : 'Split Chain'}`);
       fetchNetworks();
     } catch (err) {
       toast.error('Failed to update network');
@@ -106,18 +109,12 @@ export default function AdminNetworksPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {networks.map((network) => (
-            <Card key={network.id} className={!network.isEnabled ? 'opacity-60' : ''}>
+            <Card key={network.id} className={!network.isEnabledForBase && !network.isEnabledForSplit ? 'opacity-60' : ''}>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Network className="h-5 w-5" />
-                    {network.name}
-                  </CardTitle>
-                  <Switch
-                    checked={network.isEnabled}
-                    onCheckedChange={(checked) => toggleNetwork(network.id, checked)}
-                  />
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  <Network className="h-5 w-5" />
+                  {network.name}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -127,23 +124,31 @@ export default function AdminNetworksPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Type</span>
-                    <Badge variant={network.isTestnet ? 'secondary' : 'default'}>
-                      {network.isTestnet ? 'Testnet' : 'Mainnet'}
-                    </Badge>
+                    <Badge variant="outline">{network.type}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Status</span>
-                    {network.isEnabled ? (
-                      <Badge variant="success" className="flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <X className="h-3 w-3" />
-                        Disabled
-                      </Badge>
-                    )}
+                    <span className="text-sm text-muted-foreground">Symbol</span>
+                    <Badge variant="secondary">{network.symbol}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Token Standard</span>
+                    <Badge variant="outline">{network.tokenStandard}</Badge>
+                  </div>
+                  <div className="pt-3 border-t space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Base Chain</span>
+                      <Switch
+                        checked={network.isEnabledForBase}
+                        onCheckedChange={(checked) => toggleNetwork(network.id, 'isEnabledForBase', checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Split Chain</span>
+                      <Switch
+                        checked={network.isEnabledForSplit}
+                        onCheckedChange={(checked) => toggleNetwork(network.id, 'isEnabledForSplit', checked)}
+                      />
+                    </div>
                   </div>
                   <div className="pt-2 border-t">
                     <p className="text-xs text-muted-foreground truncate" title={network.rpcUrl}>

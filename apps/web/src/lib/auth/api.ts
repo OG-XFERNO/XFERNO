@@ -46,10 +46,38 @@ export async function register(data: RegisterData): Promise<RegisterResponse> {
   });
 }
 
-export async function login(data: LoginData): Promise<AuthResponse> {
-  return fetchApi<AuthResponse>('/api/auth/login', {
+export interface TwoFARequired {
+  requires2FA: true;
+  twoFAType: 'email' | 'authenticator';
+  userId: string;
+  email: string;
+}
+
+export async function sendEmail2FA(userId: string, email: string): Promise<{ message: string }> {
+  return fetchApi<{ message: string }>('/api/auth/2fa/email/send', {
+    method: 'POST',
+    body: JSON.stringify({ userId, email }),
+  });
+}
+
+export async function verifyEmail2FA(userId: string, code: string): Promise<AuthResponse & { success: boolean }> {
+  return fetchApi<AuthResponse & { success: boolean }>('/api/auth/2fa/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ userId, code }),
+  });
+}
+
+export async function login(data: LoginData): Promise<AuthResponse | TwoFARequired> {
+  return fetchApi<AuthResponse | TwoFARequired>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function loginWith2FA(userId: string, code: string): Promise<AuthResponse> {
+  return fetchApi<AuthResponse>('/api/auth/login/2fa', {
+    method: 'POST',
+    body: JSON.stringify({ userId, code }),
   });
 }
 
