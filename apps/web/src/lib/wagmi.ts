@@ -6,8 +6,8 @@ import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
 
 // WalletConnect Project ID - should be in env
 // Get a free project ID at https://cloud.walletconnect.com/
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-const hasValidProjectId = projectId && projectId !== 'demo' && projectId.length > 10;
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
+const hasValidProjectId = projectId.length > 10 && projectId !== 'demo';
 
 // Build connectors - only include WalletConnect if we have a valid project ID
 const connectors = [
